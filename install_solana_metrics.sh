@@ -126,6 +126,12 @@ cat > /etc/telegraf/telegraf.conf <<EOF
   data_type = "integer"
 EOF
 
+SOLANA_DIR_NAME=$(dirname $(which solana))
+
+if [[ ${#SOLANA_DIR_NAME} -lt 3 ]] ; then
+  sed -i "s,^binDir=\"\",binDir=\"${SOLANA_DIR_NAME}\",g" /root/solana/solanamonitoring/monitor.sh
+fi
+
 sudo systemctl enable --now telegraf
 }
 
