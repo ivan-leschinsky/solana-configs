@@ -17,9 +17,10 @@ echo
 
 echo "nameserver 8.8.8.8" >> /etc/resolv.conf
 
-done
-
-apt update -y && apt upgrade -y && apt install curl gnupg git ufw wget -y
+echo "#############################################################"
+echo "###       Installing base:   curl, wget, git, gnupg       ###"
+echo "#############################################################"
+apt update -y && apt upgrade -y && apt install curl gnupg git wget -y
 
 
 system_tuning() {
@@ -31,14 +32,15 @@ echo "#####################################################"
 curl -fsSL https://api.margus.one/solana/tuning.sh | bash
 
 select cluster in "mainnet-beta" "testnet"; do
-    case $cluster in
-        mainnet-beta )
-      		clusternetwork="mainnet"
-          break;;
-        testnet )
-      		clusternetwork="testnet"
-          break;;
-    esac
+  case $cluster in
+      mainnet-beta )
+    		clusternetwork="mainnet"
+        break;;
+      testnet )
+    		clusternetwork="testnet"
+        break;;
+  esac
+done
 
 if [[ $clusternetwork = testnet ]];then
 echo "This is testnet. No edit fstrim.timer"
@@ -132,6 +134,7 @@ echo "###########################################"
 echo "###      Configure ufw firewall         ###"
 echo "###      Enable ufw (y|n)?              ###"
 echo "###########################################"
+apt update -y && apt upgrade -y && apt install ufw -y
 sudo ufw allow 22/tcp
 sudo ufw allow 2222/tcp
 sudo ufw allow 8000:8020/tcp
