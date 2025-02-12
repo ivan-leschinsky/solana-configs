@@ -128,7 +128,7 @@ EOF
 
 SOLANA_DIR_NAME=$(dirname $(which solana))
 
-if [[ ${#SOLANA_DIR_NAME} -lt 3 ]] ; then
+if [[ ${#SOLANA_DIR_NAME} -gt 3 ]] ; then
   sed -i "s,^binDir=\"\",binDir=\"${SOLANA_DIR_NAME}\",g" /root/solana/solanamonitoring/monitor.sh
 fi
 
