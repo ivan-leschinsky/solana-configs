@@ -20,7 +20,7 @@ echo "nameserver 8.8.8.8" >> /etc/resolv.conf
 echo "#############################################################"
 echo "###       Installing base:   curl, wget, git, gnupg       ###"
 echo "#############################################################"
-apt update -y && apt upgrade -y && apt install curl gnupg git wget -y
+apt update -y && apt upgrade -y && apt install curl gnupg wget -y
 
 
 system_tuning() {
@@ -83,7 +83,8 @@ adduser telegraf adm
 echo "telegraf ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 cp /etc/telegraf/telegraf.conf /etc/telegraf/telegraf.conf.orig
 rm -rf /etc/telegraf/telegraf.conf
-cd $SOLANA_DIR && git clone https://github.com/solstaker/solanamonitoring/
+cd $SOLANA_DIR && mkdir -p solanamonitoring && cd solanamonitoring
+wget -q https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v2.2/monitor.sh
 chmod +x $SOLANA_DIR/solanamonitoring/monitor.sh
 echo "###########################################"
 echo "### Please type your validator name     ###"
@@ -125,12 +126,6 @@ cat > /etc/telegraf/telegraf.conf <<EOF
   data_format = "influx"
   data_type = "integer"
 EOF
-
-SOLANA_DIR_NAME=$(dirname $(which solana))
-
-if [[ ${#SOLANA_DIR_NAME} -gt 3 ]] ; then
-  sed -i "s,^binDir=\"\",binDir=\"${SOLANA_DIR_NAME}\",g" /root/solana/solanamonitoring/monitor.sh
-fi
 
 sudo systemctl enable --now telegraf
 }
