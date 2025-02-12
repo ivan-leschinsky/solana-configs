@@ -150,7 +150,7 @@ sudo ufw deny out from any to 169.254.0.0/16
 sudo ufw enable
 }
 
-echo "### Add System tuning? ###"
+echo "### Add System tuning?  Enter 1 or 2  ###"
 select systemtuning in "Yes" "No"; do
     case $systemtuning in
         Yes )
@@ -162,7 +162,7 @@ select systemtuning in "Yes" "No"; do
 done
 
 
-echo "### Install firewal?? ###"
+echo "### Install firewal?   Enter 1 or 2  ###"
 select firewall in "Yes" "No"; do
   case $firewall in
         Yes )
@@ -175,7 +175,7 @@ done
 
 
 
-echo "### Install monitoring?? ###"
+echo "### Install monitoring?  Enter 1 or 2  ###"
 select monitoring in "Yes" "No"; do
     case $monitoring in
         Yes )
