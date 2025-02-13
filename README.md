@@ -11,6 +11,12 @@ Script  to install monitoring only:
 /bin/bash -c "$(curl -fsSL https://api.vano.one/solana-monitoring)"
 ```
 
+Script  to install status check with uptime kuma:
+```bash
+/bin/bash -c "$(curl -fsSL https://api.vano.one/solana-status-check)"
+```
+
+
 
 Long URLs are here:
 
@@ -22,4 +28,9 @@ Full script with options to install and configure Solana monitoring, tuning scri
 Script  to install monitoring only
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v2.5/install_solana_monitoring.sh)"
+```
+
+Script  to install status check with uptime kuma:
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/master/install_status_check.sh)"
 ```
