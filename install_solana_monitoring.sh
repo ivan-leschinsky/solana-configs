@@ -1,6 +1,79 @@
 #!/bin/bash
 #set -x -e
 
+# Function to check if a command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Function to check if running as root
+check_root() {
+  if [ "$EUID" -ne 0 ]; then
+      echo -e "${YELLOW}⚠️  This script needs sudo privileges to install packages.${NC}"
+      return 1
+  fi
+  return 0
+}
+
+install_packages() {
+  local packages_to_install=()
+  local already_installed=()
+
+  # First, check which packages need to be installed
+  for package in "$@"; do
+    if ! command_exists "$package"; then
+      packages_to_install+=("$package")
+    else
+      already_installed+=("$package")
+    fi
+  done
+
+  # Print already installed packages
+  if [ ${#already_installed[@]} -ne 0 ]; then
+    echo -e "${GREEN}✅ Already installed:${NC}"
+    printf '%s\n' "${already_installed[@]}" | sed 's/^/  /'
+  fi
+
+  # If there are packages to install
+  if [ ${#packages_to_install[@]} -ne 0 ]; then
+    echo -e "${YELLOW}🔍 Packages to install:${NC}"
+    printf '%s\n' "${packages_to_install[@]}" | sed 's/^/  /'
+
+    echo "📦 Updating package lists..."
+    if check_root; then
+      apt update
+    else
+      sudo apt update
+    fi
+
+    echo "📥 Installing packages..."
+    if check_root; then
+      apt install -y "${packages_to_install[@]}"
+    else
+      sudo apt install -y "${packages_to_install[@]}"
+    fi
+
+    # Verify installations
+    local failed_installs=()
+    for package in "${packages_to_install[@]}"; do
+      if ! command_exists "$package"; then
+        failed_installs+=("$package")
+      fi
+    done
+
+    # Report results
+    if [ ${#failed_installs[@]} -eq 0 ]; then
+      echo -e "${GREEN}✅ All packages installed successfully!${NC}"
+    else
+      echo -e "${RED}❌ Failed to install:${NC}"
+      printf '%s\n' "${failed_installs[@]}" | sed 's/^/  /'
+      exit 1
+    fi
+  else
+      echo -e "${GREEN}✅ All packages are already installed!${NC}"
+  fi
+}
+
 SOLANA_DIR=/root/solana
 mkdir -p $SOLANA_DIR
 
@@ -14,11 +87,10 @@ echo
 
 echo "nameserver 8.8.8.8" >> /etc/resolv.conf
 
-echo "#############################################################"
-echo "###       Installing base:   curl, wget       ###"
-echo "#############################################################"
-apt update -y && apt upgrade -y && apt install curl wget -y
-
+echo "#######################################################################"
+echo "###     Ensure base packages presented in the system:   curl, wget  ###"
+echo "#######################################################################"
+install_packages curl wget
 
 install_monitoring() {
 echo "###########################################"
@@ -31,8 +103,7 @@ echo "###########################################"
 wget -q https://repos.influxdata.com/influxdata-archive_compat.key
 echo '393e8779c89ac8d958f81f942f9ad7fb82a25e133faddaf92e15b16e6ac9ce4c influxdata-archive_compat.key' | sha256sum -c && cat influxdata-archive_compat.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/influxdata-archive_compat.gpg > /dev/null
 echo 'deb [signed-by=/etc/apt/trusted.gpg.d/influxdata-archive_compat.gpg] https://repos.influxdata.com/debian stable main' | sudo tee /etc/apt/sources.list.d/influxdata.list
-apt-get update
-apt-get -y install telegraf jq bc
+install_packages telegraf jq bc
 adduser telegraf sudo
 adduser telegraf adm
 echo "telegraf ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers

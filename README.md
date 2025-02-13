@@ -16,10 +16,10 @@ Long URLs are here:
 
 Full script with options to install and configure Solana monitoring, tuning scripts and firewall
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v2.3/install_solana_metrics.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v2.4/install_solana_metrics.sh)"
 ```
 
 Script  to install monitoring only
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v2.3/install_solana_monitoring.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v2.4/install_solana_monitoring.sh)"
 ```
