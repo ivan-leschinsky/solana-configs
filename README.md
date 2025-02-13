@@ -32,5 +32,5 @@ Script  to install monitoring only
 
 Script  to install status check with uptime kuma:
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/master/install_status_check.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v2.6/install_status_check.sh)"
 ```

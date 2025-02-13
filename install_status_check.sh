@@ -129,26 +129,27 @@ update_crontab() {
 
 # Try to get identity address automatically, then ask for confirmation or manual input
 get_identity_address() {
-  # Check if solana CLI is available
-  if ! command -v solana &> /dev/null; then
-    echo "Solana CLI not found. Please enter identity address manually."
-    return 1
-  fi
-
-  # Try to get address from solana CLI
-  local auto_address
-  auto_address=$(solana address 2>/dev/null)
-
-  if [ $? -eq 0 ] && [ ! -z "$auto_address" ]; then
-    echo "Found identity address from Solana CLI: $auto_address"
-    read -p "Use this address? (y/n): " use_auto
-    if [[ $use_auto =~ ^[Yy]$ ]]; then
-      echo "$auto_address"
-      return 0
+    # Check if solana CLI is available
+    if ! command -v solana &> /dev/null; then
+        echo "Solana CLI not found. Please enter identity address manually." >&2
+        return 1
     fi
-  fi
 
-  return 1
+    local auto_address
+    auto_address=$(solana address)
+
+    if [ $? -eq 0 ] && [ ! -z "$auto_address" ]; then
+        echo "Found identity address from Solana CLI: $auto_address" >&2
+        read -p "Use this address? (y/n): " use_auto
+        if [[ $use_auto =~ ^[Yy]$ ]]; then
+            echo "$auto_address"
+            return 0
+        fi
+    else
+        echo "Could not automatically detect identity address (Exit code: $?, Output: '$auto_address')" >&2
+    fi
+
+    return 1
 }
 
 # Main script execution
@@ -185,7 +186,7 @@ else
     while true; do
         # Try to get address automatically first
         auto_identity=$(get_identity_address)
-        if [ $? -eq 0 ]; then
+        if [ $? -eq 0 ] && [ ! -z "$auto_identity" ]; then
             IDENTITY_ADDRESS="$auto_identity"
             break
         fi
