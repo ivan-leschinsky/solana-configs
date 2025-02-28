@@ -15,7 +15,7 @@ generate_monitoring_url() {
 SOLANA_DIR=/root/solana
 mkdir -p $SOLANA_DIR
 
-print_multiline_header "Solana Monitoring Installer" \
+print_multiline_header "Solana Monitoring Installer v2.9" \
     "This script will perform the following operations" \
     "Install and configure telegraf" \
     "Configure monitoring for stakeconomy metrics" \
