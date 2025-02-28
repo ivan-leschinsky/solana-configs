@@ -1,8 +1,16 @@
 #!/bin/bash
 
 # Initialize helper UI functions
-eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/master/helper.sh)"
+eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v2.7/helper.sh)"
 
+# Function to generate monitoring URL
+generate_monitoring_url() {
+  local address="${1//,/}"
+  local validator_name="$2"
+  local base_url="https://metrics.stakeconomy.com/d/f2b2HcaGz/solana-community-validator-dashboard"
+  local params="orgId=1&refresh=1m&var-pubkey=${address}&var-server=${validator_name}&var-inter=1m&var-netif=&var-version="
+  echo "${base_url}?${params}"
+}
 
 SOLANA_DIR=/root/solana
 mkdir -p $SOLANA_DIR
