@@ -33,6 +33,8 @@ update_fd() {
   GROUP_ID=$(id -g "$USERNAME")
 
   cd /root/firedancer
+  git checkout .
+  git fetch
   git checkout $NEW_VERSION
   git submodule update --init --recursive
   sed -i "/^[ \t]*results\[ 0 \] = pwd\.pw_uid/c results[ 0 ] = $USER_ID;" ~/firedancer/src/app/fdctl/config.c
