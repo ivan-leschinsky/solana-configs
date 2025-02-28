@@ -63,35 +63,60 @@ copy_when_free() {
     done
 
     if $ALL_FREE; then
+      echo "${GREEN}Copying files...${NC}"
       cp /root/firedancer/build/native/gcc/bin/* /usr/local/bin/
       break
     fi
-
+    echo "${YELLOW}Waiting for solana,fdctl files to be free...${NC}"
     sleep 5
   done
 }
 
 stop_fd() {
   service firedancer stop
-  sleep 5
-  # cp /root/firedancer/build/native/gcc/bin/* /usr/local/bin/
-  # service firedancer start
 }
+
+start_fd() {
+  service firedancer start
+}
+
+wait_for_restart_window() {
+  if agave-validator --ledger /home/firedancer/solana_fd/ledger wait-for-restart-window --min-idle-time 3 --max-delinquent-stake 14; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+restart_with_copy() {
+  stop_fd
+  sleep 5
+  copy_when_free
+  start_fd
+}
+
 
 if check_root; then
   update_fd
-  stop_fd
-  copy_when_free
+  if command_exists "agave-validator"; then
+    print_header "Waiting to restart Firedancer"
+    if wait_for_restart_window; then
+      restart_with_copy
+    fi
+  else
+    restart_with_copy
+  fi
+  print_header "${GREEN}Started Firedancer, check service status please${NC}"
 
   echo
 
   print_multiline_header "Almost finished" \
-    "Now reboot server and run immediately after boot: \033[0;32mfdctl configure init hugetlbfs\033[0m" \
-    "${GREEN}fdctl configure init all --config /home/firedancer/solana_fd/solana-testnet.toml${NC}" \
-    "${GREEN}service firedancer start${NC}" \
+    "After any server reboot run immediately after boot:" \
+    "fdctl configure init all --config /home/firedancer/solana_fd/solana-testnet.toml" \
+    "service firedancer start" \
     "" \
-    "You can also try to start directly: ${GREEN}service firedancer start${NC}" \
-    "and then check status with: ${GREEN}service firedancer status${NC}" \
+    "You can also try to start directly:  service firedancer start" \
+    "and then check status with:          service firedancer status" \
     "if it works fine - no need to reboot the server" \
     "" \
     "Good luck"
