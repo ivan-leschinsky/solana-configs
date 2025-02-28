@@ -34,3 +34,9 @@ Script  to install status check with uptime kuma:
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v2.6/install_status_check.sh)"
 ```
+
+
+### Upgrade firedancer
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/master/firedancer_update.sh) v0.404.20113"
+```
