@@ -11,6 +11,7 @@ print_multiline_header "Solana Firedancer Updater" \
     "" \
     "Author: vano.one"
 
+# Based on original docs https://docs.firedancer.io/guide/getting-started.html#releases
 
 # Ensure the script is run as root
 if [[ $EUID -ne 0 ]]; then
@@ -44,18 +45,58 @@ update_fd() {
   make -j fdctl solana
 }
 
+is_file_busy() {
+  local file="$1"
+
+  if lsof "$file" > /dev/null 2>&1; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+copy_when_free() {
+  local FILES=("/usr/local/bin/fdctl" "/usr/local/bin/solana")
+
+  while true; do
+    ALL_FREE=true
+
+    for file in "${FILES[@]}"; do
+      if is_file_busy "$file"; then
+        ALL_FREE=false
+        break
+      fi
+    done
+
+    if $ALL_FREE; then
+      cp /root/firedancer/build/native/gcc/bin/* /usr/local/bin/
+      break
+    fi
+
+    sleep 5
+  done
+}
+
 stop_fd() {
   service firedancer stop
-  cp /root/firedancer/build/native/gcc/bin/* /usr/local/bin/
+  sleep 5
+  # cp /root/firedancer/build/native/gcc/bin/* /usr/local/bin/
   # service firedancer start
 }
 
 update_fd
 stop_fd
+copy_when_free
+
+echo
 
 print_multiline_header "Almost finished" \
-    "Nowreboot server and run immediately after boot: \033[0;32mfdctl configure init hugetlbfs\033[0m" \
+    "Now reboot server and run immediately after boot: \033[0;32mfdctl configure init hugetlbfs\033[0m" \
     "${GREEN}fdctl configure init all --config /home/firedancer/solana_fd/solana-testnet.toml${NC}" \
     "${GREEN}service firedancer start${NC}" \
+    "" \
+    "You can also try to start directly: ${GREEN}service firedancer start${NC}" \
+    "and then check status with: ${GREEN}service firedancer status${NC}" \
+    "if it works fine - no need to reboot the server" \
     "" \
     "Good luck"
