@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Initialize helper UI functions
-eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v2.7/helper.sh)"
+eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v2.9/helper.sh)"
 
 # Function to generate monitoring URL
 generate_monitoring_url() {

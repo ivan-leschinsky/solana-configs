@@ -20,6 +20,14 @@ print_header() {
   echo -e "${NC}"
 }
 
+# Function to check if running as root
+check_root() {
+  if [ "$EUID" -ne 0 ]; then
+    return 1
+  fi
+  return 0
+}
+
 # Function to create beautiful multiline header with title
 print_multiline_header() {
   local title="$1"
@@ -124,6 +132,7 @@ install_packages() {
     if check_root; then
       apt update
     else
+      echo -e "${YELLOW}⚠️  This script needs sudo privileges to install packages.${NC}"
       sudo apt update
     fi
 

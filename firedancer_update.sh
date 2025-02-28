@@ -3,7 +3,7 @@
 set -e
 
 # Initialize helper UI functions
-eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v2.7/helper.sh)"
+eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v2.9/helper.sh)"
 
 print_multiline_header "Solana Firedancer Updater" \
     "This script will perform the following operations" \
@@ -12,12 +12,6 @@ print_multiline_header "Solana Firedancer Updater" \
     "Author: vano.one"
 
 # Based on original docs https://docs.firedancer.io/guide/getting-started.html#releases
-
-# Ensure the script is run as root
-if [[ $EUID -ne 0 ]]; then
-  echo -e "${RED}❌ This script must be run as root. Please run it with 'sudo' or as root user.${NC}"
-  exit 1
-fi
 
 if [ -n "$1" ] && [ ${#1} -gt 8 ]; then
   NEW_VERSION="$1"
@@ -84,13 +78,14 @@ stop_fd() {
   # service firedancer start
 }
 
-update_fd
-stop_fd
-copy_when_free
+if check_root; then
+  update_fd
+  stop_fd
+  copy_when_free
 
-echo
+  echo
 
-print_multiline_header "Almost finished" \
+  print_multiline_header "Almost finished" \
     "Now reboot server and run immediately after boot: \033[0;32mfdctl configure init hugetlbfs\033[0m" \
     "${GREEN}fdctl configure init all --config /home/firedancer/solana_fd/solana-testnet.toml${NC}" \
     "${GREEN}service firedancer start${NC}" \
@@ -100,3 +95,7 @@ print_multiline_header "Almost finished" \
     "if it works fine - no need to reboot the server" \
     "" \
     "Good luck"
+else
+  echo -e "${RED}❌ This script must be run as root user.${NC}"
+  exit 1
+fi
