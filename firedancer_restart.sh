@@ -5,8 +5,6 @@ set -e
 # Initialize helper UI functions
 eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v2.9/helper.sh)"
 
-print_header "Restarting Firedancer"
-
 wait_for_restart_window() {
   if agave-validator --ledger /home/firedancer/solana_fd/ledger wait-for-restart-window --min-idle-time 10 --max-delinquent-stake 14; then
     return 0
@@ -21,14 +19,14 @@ restart_fd() {
 
 if check_root; then
   if command_exists "agave-validator"; then
-    print_header "Waiting to restart Firedancer"
+    print_header "Waiting for restart window to restart Firedancer"
     if wait_for_restart_window; then
       restart_fd
     fi
   else
     restart_fd
   fi
-  print_header "Started Firedancer, check service status please with: service firedancer status"
+  print_header "Firedancer restarted, check service status please with: service firedancer status"
 
   echo
 
