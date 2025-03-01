@@ -47,5 +47,5 @@ Script  to install status check with uptime kuma:
 ### Restart firedancer with waiting for the snapshot
 ```bash
 /bin/bash -c "$(curl -fsSL https://api.vano.one/fd-restart)"
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/master/firedancer_restart.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.1/firedancer_restart.sh)"
 ```

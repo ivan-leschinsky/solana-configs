@@ -20,7 +20,6 @@ restart_fd() {
 }
 
 if check_root; then
-  update_fd
   if command_exists "agave-validator"; then
     print_header "Waiting to restart Firedancer"
     if wait_for_restart_window; then
