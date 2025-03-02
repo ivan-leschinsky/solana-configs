@@ -27,6 +27,11 @@ update_fd() {
   USER_ID=$(id -u "$USERNAME")
   GROUP_ID=$(id -g "$USERNAME")
 
+  if [ ! -d "/root/firedancer" ]; then
+    echo "/root/firedancer does not exist, cloning from git..."
+    git clone --recurse-submodules https://github.com/firedancer-io/firedancer.git
+  fi
+
   cd /root/firedancer
   git checkout .
   git fetch
