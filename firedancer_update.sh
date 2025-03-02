@@ -68,11 +68,11 @@ copy_when_free() {
     done
 
     if $ALL_FREE; then
-      echo "${GREEN}Copying files...${NC}"
+      echo -e "Copying ${RED}fdctl${NC} and ${RED}solana${NC} binary files..."
       cp /root/firedancer/build/native/gcc/bin/* /usr/local/bin/
       break
     fi
-    echo "${YELLOW}Waiting for solana,fdctl files to be free...${NC}"
+    echo -e "${YELLOW}Waiting for solana,fdctl files to be free...${NC}"
     sleep 5
   done
 }
