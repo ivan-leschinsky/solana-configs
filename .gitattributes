@@ -1,0 +1,2 @@
+binaries/fdctl-0.406.20113 filter=lfs diff=lfs merge=lfs -text
+binaries/solana-0.406.20113 filter=lfs diff=lfs merge=lfs -text
