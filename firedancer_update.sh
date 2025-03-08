@@ -5,7 +5,7 @@ set -e
 # Initialize helper UI functions
 eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v2.9/helper.sh)"
 
-print_multiline_header "Solana Firedancer Updater v2.9" \
+print_multiline_header "Solana Firedancer Updater v3.3.0" \
     "This script will perform the following operations" \
     "Update installed firedancer to the latest version or to the specified version from an argument" \
     "" \
@@ -36,6 +36,7 @@ update_fd() {
   git checkout .
   git fetch
   git checkout $NEW_VERSION
+  rm -rf agave
   git submodule update --init --recursive
   sed -i "/^[ \t]*results\[ 0 \] = pwd\.pw_uid/c results[ 0 ] = $USER_ID;" ~/firedancer/src/app/fdctl/config.c
   sed -i "/^[ \t]*results\[ 1 \] = pwd\.pw_gid/c results[ 1 ] = $GROUP_ID;" ~/firedancer/src/app/fdctl/config.c
