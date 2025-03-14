@@ -5,9 +5,10 @@ set -e
 # Initialize helper UI functions
 eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v2.9/helper.sh)"
 
-print_multiline_header "Solana Firedancer Updater v3.3.0" \
+print_multiline_header "Solana Firedancer Updater v3.4.0" \
     "This script will perform the following operations" \
     "Update installed firedancer to the latest version or to the specified version from an argument" \
+    "Add auto-start script as an option" \
     "" \
     "Author: vano.one"
 
@@ -101,8 +102,71 @@ restart_with_copy() {
   start_fd
 }
 
+add_firedancer_start() {
+  print_header "Setting up Firedancer boot script..."
+
+  # Create/update the boot script
+  cat > /usr/local/bin/fd-boot.sh << 'EOF'
+  #!/bin/bash
+  sleep 60 && fdctl configure init all --config /home/firedancer/solana_fd/solana-testnet.toml && sleep 60 && service firedancer start
+EOF
+
+  # Make sure the script is executable
+  chmod +x /usr/local/bin/fd-boot.sh
+  echo "Boot script updated at /usr/local/bin/fd-boot.sh"
+
+  # Create/update the systemd service file
+  cat > /etc/systemd/system/fd-boot.service << 'EOF'
+  [Unit]
+  Description=Firedancer Init and service start on Boot by vano.one
+  After=network.target
+  StartLimitIntervalSec=0
+
+  [Service]
+  Type=oneshot
+  RemainAfterExit=yes
+  ExecStart=/usr/local/bin/fd-boot.sh
+  User=root
+  Group=root
+  Restart=on-failure
+  RestartSec=5
+
+  [Install]
+  WantedBy=multi-user.target
+EOF
+
+  # Reload systemd manager to recognize changes
+  systemctl daemon-reload
+  echo "Systemd service configuration reloaded"
+
+  # Enable the service to run at boot (this is idempotent - safe to run multiple times)
+  systemctl enable fd-boot.service
+  echo "Systemd service enabled to run at boot"
+
+  # Check if the service is already running
+  if systemctl is-active --quiet fd-boot.service; then
+    echo "Restarting fd-boot service to apply changes..."
+    systemctl restart fd-boot.service
+  else
+    echo "The fd-boot service is not currently running."
+    echo "It will run automatically on the next system boot."
+    echo "You can start it manually with: sudo systemctl start fd-boot.service"
+  fi
+
+  echo "Firedancer boot setup completed successfully!"
+}
+
+ask_add_autoboot() {
+  read -p "Do you want to auto start Firedancer init and service on server reboot? (Y/n): " choice
+  choice=${choice:-Y}  # Default to Y if empty (user pressed Enter)
+  case "$choice" in
+    [Yy]* ) add_firedancer_start;;
+    * ) echo "ok, skipping auto start";;
+  esac
+}
 
 if check_root; then
+  ask_add_autoboot
   update_fd
   if command_exists "agave-validator"; then
     print_header "Waiting to restart Firedancer"
@@ -112,6 +176,7 @@ if check_root; then
   else
     restart_with_copy
   fi
+
   print_header "${GREEN}Started Firedancer, check service status please${NC}"
 
   echo
