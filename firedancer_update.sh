@@ -5,7 +5,7 @@ set -e
 # Initialize helper UI functions
 eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v2.9/helper.sh)"
 
-print_multiline_header "Solana Firedancer Updater v3.4.0" \
+print_multiline_header "Solana Firedancer Updater v3.4.2" \
     "This script will perform the following operations" \
     "Update installed firedancer to the latest version or to the specified version from an argument" \
     "Add auto-start script as an option" \
