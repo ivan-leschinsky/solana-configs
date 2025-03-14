@@ -54,6 +54,6 @@ Script  to install status check with uptime kuma:
 ### Firedancer snapshot finder
 
 ```bash
-/bin/bash -c "$(curl -fsSL https://api.vano.one/fd-finder)"
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/master/firedancer_snapshot_finder.sh)"
+/bin/bash -c "$(curl -fsSL https://api.vano.one/snapshot-finder)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/master/snapshot_finder.sh)"
 ```
