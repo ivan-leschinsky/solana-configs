@@ -157,6 +157,12 @@ EOF
 }
 
 ask_add_autoboot() {
+  # Check if fd-boot service already exists and is enabled
+  if systemctl is-enabled --quiet fd-boot.service 2>/dev/null; then
+    echo "fd-boot service is already set up and enabled. Skipping auto start configuration."
+    return
+  fi
+
   read -p "Do you want to auto start Firedancer init and service on server reboot? (Y/n): " choice
   choice=${choice:-Y}  # Default to Y if empty (user pressed Enter)
   case "$choice" in
