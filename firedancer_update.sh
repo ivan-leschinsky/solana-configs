@@ -105,34 +105,23 @@ restart_with_copy() {
 add_firedancer_start() {
   print_header "Setting up Firedancer boot script..."
 
-  # Create/update the boot script
-  cat > /usr/local/bin/fd-boot.sh << 'EOF'
-  #!/bin/bash
-  sleep 60 && fdctl configure init all --config /home/firedancer/solana_fd/solana-testnet.toml && sleep 60 && service firedancer start
-EOF
-
-  # Make sure the script is executable
-  chmod +x /usr/local/bin/fd-boot.sh
-  echo "Boot script updated at /usr/local/bin/fd-boot.sh"
-
   # Create/update the systemd service file
-  cat > /etc/systemd/system/fd-boot.service << 'EOF'
-  [Unit]
-  Description=Firedancer Init and service start on Boot by vano.one
-  After=network.target
-  StartLimitIntervalSec=0
+  cat > /etc/systemd/system/firedancer.service <<EOF
+[Unit]
+Description=Firedancer Node
+Wants=network.target
+After=network.target
 
-  [Service]
-  Type=oneshot
-  RemainAfterExit=yes
-  ExecStart=/usr/local/bin/fd-boot.sh
-  User=root
-  Group=root
-  Restart=on-failure
-  RestartSec=5
-
-  [Install]
-  WantedBy=multi-user.target
+[Service]
+# User=root
+# Group=root
+ExecStart=/bin/bash -c ' \\
+  /usr/local/bin/fdctl configure init all --config /home/firedancer/solana_fd/solana-testnet.toml && \\
+  /usr/local/bin/fdctl run --config /home/firedancer/solana_fd/solana-testnet.toml'
+Restart=on-failure
+RestartSec=30
+[Install]
+WantedBy=multi-user.target
 EOF
 
   # Reload systemd manager to recognize changes
@@ -140,17 +129,17 @@ EOF
   echo "Systemd service configuration reloaded"
 
   # Enable the service to run at boot (this is idempotent - safe to run multiple times)
-  systemctl enable fd-boot.service
+  systemctl enable firedancer.service
   echo "Systemd service enabled to run at boot"
 
   # Check if the service is already running
-  if systemctl is-active --quiet fd-boot.service; then
-    echo "Restarting fd-boot service to apply changes..."
-    systemctl restart fd-boot.service
+  if systemctl is-active --quiet firedancer.service; then
+    echo "Restarting firedancer service to apply changes..."
+    systemctl restart firedancer.service
   else
-    echo "The fd-boot service is not currently running."
+    echo "The firedancer service is not currently running."
     echo "It will run automatically on the next system boot."
-    echo "You can start it manually with: sudo systemctl start fd-boot.service"
+    echo "You can start it manually with: systemctl start firedancer.service"
   fi
 
   echo "Firedancer boot setup completed successfully!"
@@ -158,8 +147,8 @@ EOF
 
 ask_add_autoboot() {
   # Check if fd-boot service already exists and is enabled
-  if systemctl is-enabled --quiet fd-boot.service 2>/dev/null; then
-    echo "fd-boot service is already set up and enabled. Skipping auto start configuration."
+  if systemctl is-enabled --quiet firedancer.service 2>/dev/null; then
+    echo "firedancer service is already set up and enabled. Skipping auto start configuration."
     return
   fi
 
