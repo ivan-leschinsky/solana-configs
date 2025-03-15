@@ -2,6 +2,7 @@
 
 set -e
 
+
 # Initialize helper UI functions
 eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.7.0/helper.sh)"
 
@@ -30,6 +31,7 @@ fi
 print_header "Starting updating Firedancer to the $NEW_VERSION..."
 
 DOWNLOADED=false
+REBOOT_AFTER_UPDATE="n"
 
 # Function to download binary or file
 download_file() {
@@ -367,7 +369,9 @@ restart_with_copy() {
   stop_fd
   sleep 5
   copy_when_free
-  start_fd
+  if ! [ "$REBOOT_AFTER_UPDATE" = "y" ]; then
+    start_fd
+  fi
 }
 
 add_firedancer_start() {
@@ -410,17 +414,18 @@ EOF
   fi
 }
 
-REBOOT_AFTER_UPDATE="n"
-
 if check_root; then
   add_firedancer_start
   configure_fd
   update_fd
 
-  if $DOWNLOADED; then
-    REBOOT_AFTER_UPDATE="n"
-    # echo -e "${GREEN}Using downloaded binaries, reboot not required.${NC}"
-  elif ask_yes_no "Do you want to reboot the system after Firedancer update?" "y"; then
+  # if $DOWNLOADED; then
+  #   REBOOT_AFTER_UPDATE="n"
+  #   # echo -e "${GREEN}Using downloaded binaries, reboot not required.${NC}"
+  # elif ask_yes_no "Do you want to reboot the system after Firedancer update?" "y"; then
+  #   REBOOT_AFTER_UPDATE="y"
+  # fi
+  if ask_yes_no "Do you want to reboot the system after Firedancer update?" "y"; then
     REBOOT_AFTER_UPDATE="y"
   fi
 
