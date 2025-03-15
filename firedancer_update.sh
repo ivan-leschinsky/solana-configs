@@ -24,6 +24,7 @@ fi
 
 print_header "Starting updating Firedancer to the $NEW_VERSION..."
 
+DOWNLOADED=false
 
 # Function to download binary or file
 download_file() {
@@ -94,6 +95,7 @@ update_fd() {
 
       # Create a marker file to indicate binaries were downloaded, not compiled
       touch "${DOWNLOAD_DIR}/downloaded"
+      DOWNLOADED=true
 
       # Verify files downloaded correctly
       if [ -f "${DOWNLOAD_DIR}/fdctl" ] && [ -f "${DOWNLOAD_DIR}/solana" ]; then
@@ -332,7 +334,10 @@ if check_root; then
   configure_fd
   update_fd
 
-  if ask_yes_no "Do you want to reboot the system after Firedancer update?" "y"; then
+  if $DOWNLOADED; then
+    REBOOT_AFTER_UPDATE="n"
+    echo -e "${GREEN}Using downloaded binaries, reboot not required.${NC}"
+  elif ask_yes_no "Do you want to reboot the system after Firedancer update?" "y"; then
     REBOOT_AFTER_UPDATE="y"
   fi
 
