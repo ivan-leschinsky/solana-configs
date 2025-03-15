@@ -5,7 +5,7 @@ set -e
 # Initialize helper UI functions
 eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.7.0/helper.sh)"
 
-print_multiline_header "Solana Firedancer Updater v3.7.1" \
+print_multiline_header "Solana Firedancer Updater v3.8.0" \
     "This script will perform the following operations" \
     "Update installed firedancer to the latest version or to the specified version from an argument" \
     "Update toml configs and ensure auto-start for firedancer" \
@@ -49,6 +49,75 @@ download_file() {
   fi
 }
 
+download_file_lfs() {
+  local filename="$1"
+  local output_file="$2"
+  local description="${3:-file}"
+  local git_url="http://raw.githubusercontent.com/ivan-leschinsky/solana-configs/master/binaries/$filename"
+
+  echo -e "${CYAN}📥 Downloading ${description} from LFS...${NC}"
+
+  # Step 1: Get the LFS pointer file
+  local lfs_pointer=$(curl -s "$git_url")
+
+  # Step 2: Extract the LFS URL from the pointer file
+  if [[ "$lfs_pointer" == *"oid sha256:"* ]]; then
+    echo -e "${CYAN}This is an LFS-managed file. Processing...${NC}"
+
+    # Extract the OID (SHA256 hash)
+    local oid=$(echo "$lfs_pointer" | grep "oid sha256:" | cut -d: -f2 | tr -d '[:space:]')
+
+    # Extract the size
+    local size=$(echo "$lfs_pointer" | grep "size" | cut -d' ' -f2 | tr -d '[:space:]')
+
+    # Get the repository information
+    local repo_owner="ivan-leschinsky"
+    local repo_name="solana-configs"
+
+    # Construct the LFS API URL
+    local lfs_api_url="https://github.com/$repo_owner/$repo_name.git/info/lfs/objects/batch"
+
+    # Create JSON payload for the LFS API request
+    local json_payload="{\"operation\": \"download\", \"transfers\": [\"basic\"], \"objects\": [{\"oid\": \"$oid\", \"size\": $size}]}"
+
+    # Make the LFS API request to get the download URL
+    local lfs_response=$(curl -s -X POST \
+        -H "Accept: application/vnd.git-lfs+json" \
+        -H "Content-Type: application/vnd.git-lfs+json" \
+        -d "$json_payload" \
+        "$lfs_api_url")
+
+    # Extract the download URL from the response
+    local download_url=$(echo "$lfs_response" | jq -r '.objects[0].actions.download.href')
+
+    if [ -z "$download_url" ] || [ "$download_url" == "null" ]; then
+        echo -e "${RED}❌ Failed to get download URL from LFS API. Response:${NC}"
+        echo "$lfs_response"
+        return 1
+    fi
+
+    # Download the actual file with progress bar
+    echo -e "${CYAN}Downloading file from: $download_url${NC}"
+    curl -L --progress-bar "$download_url" -o "$output_file"
+  else
+    # If it's not an LFS file, just download it directly
+    echo -e "${YELLOW}⚠️ This appears to be a regular file, not LFS-managed. Downloading directly...${NC}"
+    curl -L --progress-bar "$git_url" -o "$output_file"
+  fi
+
+  local result=$?
+
+  if [ $result -eq 0 ] && [ -f "$output_file" ]; then
+    local filesize=$(du -h "$output_file" | cut -f1)
+    echo -e "${GREEN}✅ Successfully downloaded ${description}! (Size: ${filesize})${NC}"
+    chmod +x "$output_file"
+    return 0
+  else
+    echo -e "${RED}❌ Failed to download ${description}. Error code: ${result}${NC}"
+    return 1
+  fi
+}
+
 compile_fd() {
   USERNAME="firedancer"
   USER_ID=$(id -u "$USERNAME")
@@ -85,25 +154,34 @@ update_fd() {
 
   if echo "$AVAILABILITY_RESPONSE" | jq -e '.available == true' > /dev/null 2>&1; then
     if ask_yes_no "Download pre-compiled binaries for firedancer ${NEW_VERSION} instead of compiling?" "y"; then
-      FDCTL_URL="https://api.vano.one/static/fdctl-${NEW_VERSION}"
-      SOLANA_URL="https://api.vano.one/static/solana-${NEW_VERSION}"
+      FDCTL_URL="fdctl-${NEW_VERSION}"
+      SOLANA_URL="solana-${NEW_VERSION}"
 
-      download_file "$FDCTL_URL" "${DOWNLOAD_DIR}/fdctl" "fdctl binary"
-      chmod +x "${DOWNLOAD_DIR}/fdctl"
-      download_file "$SOLANA_URL" "${DOWNLOAD_DIR}/solana" "solana binary"
-      chmod +x "${DOWNLOAD_DIR}/solana"
+      # Download fdctl and check if successful
+      if ! download_file_lfs "$FDCTL_URL" "${DOWNLOAD_DIR}/fdctl" "fdctl binary"; then
+        echo -e "${RED}❌ Failed to download fdctl binary. Falling back to compilation.${NC}"
+        compile_fd
+        return
+      fi
 
-      # Create a marker file to indicate binaries were downloaded, not compiled
-      touch "${DOWNLOAD_DIR}/downloaded"
-      DOWNLOADED=true
+      # Download solana and check if successful
+      if ! download_file_lfs "$SOLANA_URL" "${DOWNLOAD_DIR}/solana" "solana binary"; then
+        echo -e "${RED}❌ Failed to download solana binary. Falling back to compilation.${NC}"
+        compile_fd
+        return
+      fi
 
-      # Verify files downloaded correctly
+      # Verify files exist and are executable
       if [ -f "${DOWNLOAD_DIR}/fdctl" ] && [ -f "${DOWNLOAD_DIR}/solana" ]; then
+        chmod +x "${DOWNLOAD_DIR}/fdctl" "${DOWNLOAD_DIR}/solana"
+
+        # Create a marker file to indicate binaries were downloaded, not compiled
+        touch "${DOWNLOAD_DIR}/downloaded"
+        DOWNLOADED=true
+
         echo -e "${GREEN}✅ Firedancer binaries downloaded successfully!${NC}"
-        return 0
       else
-        echo -e "${RED}❌ Failed to download Firedancer binaries.${NC}"
-        return 1
+        compile_fd
       fi
     else
       compile_fd
@@ -301,7 +379,6 @@ After=network.target
 # User=root
 # Group=root
 ExecStart=/bin/bash -c ' \\
-  for i in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance > $i; done && \\
   /usr/local/bin/fdctl configure init all --config /home/firedancer/solana_fd/solana-testnet.toml && \\
   /usr/local/bin/fdctl run --config /home/firedancer/solana_fd/solana-testnet.toml'
 Restart=on-failure
