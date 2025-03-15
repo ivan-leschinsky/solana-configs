@@ -47,7 +47,7 @@ update_fd() {
   make -j fdctl solana
 }
 
-configuring_fd() {
+configure_fd() {
   mkdir -p /home/firedancer/solana_fd
   chown -R firedancer:firedancer /home/firedancer/solana_fd/
 
