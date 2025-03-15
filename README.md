@@ -38,8 +38,13 @@ Script  to install status check with uptime kuma:
 
 ### Upgrade firedancer with version selection
 ```bash
+# Latest version:
+/bin/bash -c "$(curl -fsSL https://api.vano.one/fd-update)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.8.2/firedancer_update.sh)"
+
+# With version as an argument
 /bin/bash -c "$(curl -fsSL https://api.vano.one/fd-update)" _ v0.407.20113
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.8.1/firedancer_update.sh)" _ v0.407.20113
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.8.3/firedancer_update.sh)" _ v0.407.20113
 ```
 
 
