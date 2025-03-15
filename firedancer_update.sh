@@ -6,7 +6,7 @@ set -e
 # Initialize helper UI functions
 eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.7.0/helper.sh)"
 
-print_multiline_header "Solana Firedancer Updater v3.8.4" \
+print_multiline_header "Solana Firedancer Updater v3.8.5" \
     "This script will perform the following operations" \
     "Update installed firedancer to the latest version or to the specified version from an argument" \
     "Update toml configs and ensure auto-start for firedancer" \
@@ -162,18 +162,18 @@ update_fd() {
 
   if echo "$AVAILABILITY_RESPONSE" | jq -e '.available == true' > /dev/null 2>&1; then
     if ask_yes_no "Download pre-compiled binaries for firedancer ${NEW_VERSION} instead of compiling?" "y"; then
-      FDCTL_URL="fdctl-${NEW_VERSION}"
-      SOLANA_URL="solana-${NEW_VERSION}"
+      FDCTL_URL="https://solana-api.vano.one/fdctl-${NEW_VERSION}"
+      SOLANA_URL="https://solana-api.vano.one/solana-${NEW_VERSION}"
 
       # Download fdctl and check if successful
-      if ! download_file_lfs "$FDCTL_URL" "${DOWNLOAD_DIR}/fdctl" "fdctl binary"; then
+      if ! download_file "$FDCTL_URL" "${DOWNLOAD_DIR}/fdctl" "fdctl binary"; then
         echo -e "${RED}❌ Failed to download fdctl binary. Falling back to compilation.${NC}"
         compile_fd
         return
       fi
 
       # Download solana and check if successful
-      if ! download_file_lfs "$SOLANA_URL" "${DOWNLOAD_DIR}/solana" "solana binary"; then
+      if ! download_file "$SOLANA_URL" "${DOWNLOAD_DIR}/solana" "solana binary"; then
         echo -e "${RED}❌ Failed to download solana binary. Falling back to compilation.${NC}"
         compile_fd
         return
