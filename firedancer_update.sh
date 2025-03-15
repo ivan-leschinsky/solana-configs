@@ -6,7 +6,7 @@ set -e
 # Initialize helper UI functions
 eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.7.0/helper.sh)"
 
-print_multiline_header "Solana Firedancer Updater v3.8.6" \
+print_multiline_header "Solana Firedancer Updater v3.8.7" \
     "This script will perform the following operations" \
     "Update installed firedancer to the latest version or to the specified version from an argument" \
     "Update toml configs and ensure auto-start for firedancer" \
@@ -359,7 +359,7 @@ start_fd() {
 }
 
 wait_for_restart_window() {
-  if agave-validator --ledger /home/firedancer/solana_fd/ledger wait-for-restart-window --min-idle-time 3 --max-delinquent-stake 14; then
+  if agave-validator --ledger /home/firedancer/solana_fd/ledger wait-for-restart-window --min-idle-time 5 --max-delinquent-stake 15; then
     return 0
   else
     return 1
@@ -392,7 +392,7 @@ ExecStart=/bin/bash -c ' \\
   /usr/local/bin/fdctl configure init all --config /home/firedancer/solana_fd/solana-testnet.toml && \\
   /usr/local/bin/fdctl run --config /home/firedancer/solana_fd/solana-testnet.toml'
 Restart=on-failure
-RestartSec=30
+RestartSec=5
 [Install]
 WantedBy=multi-user.target
 EOF
