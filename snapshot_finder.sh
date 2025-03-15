@@ -12,6 +12,13 @@ load_helper_functions() {
 
 # Locate and parse service configuration file to extract paths
 find_service_configuration() {
+    # Initialize arrays to store detected services
+    local detected_services=()
+    local service_types=()
+    local ledger_paths=()
+    local snapshot_paths=()
+    local inc_snapshot_paths=()
+
     # Try Solana configurations first
     local solana_service_file="/root/solana/solana.service"
     local solana_script_file="/root/solana/validator.sh"
@@ -21,37 +28,72 @@ find_service_configuration() {
 
     # Check for Solana service file
     if [ -f "$solana_service_file" ]; then
-        LEDGER=$(grep "\--ledger" "$solana_service_file" 2>/dev/null | awk '{ print $2 }')
-        SNAPSHOTS=$(grep "\--snapshots" "$solana_service_file" 2>/dev/null | awk '{ print $2 }')
-        SERVICE_TYPE="solana"
-        SERVICE_NAME="solana"
-        echo "Using Solana service file: $solana_service_file"
-        return 0
+        detected_services+=("Solana service")
+        service_types+=("solana")
+        ledger_paths+=($(grep "\--ledger" "$solana_service_file" 2>/dev/null | awk '{ print $2 }'))
+        snapshot_paths+=($(grep "\--snapshots" "$solana_service_file" 2>/dev/null | awk '{ print $2 }'))
+        inc_snapshot_paths+=("")
+        echo "Found Solana service file: $solana_service_file"
     fi
 
     # Check for Solana script file
-    if [ -f "$solana_script_file" ]; then
-        LEDGER=$(grep "\--ledger" "$solana_script_file" 2>/dev/null | awk '{ print $2 }')
-        SNAPSHOTS=$(grep "\--snapshots" "$solana_script_file" 2>/dev/null | awk '{ print $2 }')
-        INC_SNAPSHOTS=$(grep "\--incremental-snapshot-archive-path" "$solana_script_file" 2>/dev/null | awk '{ print $2 }')
-        SERVICE_TYPE="solana"
-        SERVICE_NAME="solana"
-        echo "Using Solana validator script: $solana_script_file"
-        return 0
+    if [ -f "$solana_script_file" ] && [ ${#detected_services[@]} -eq 0 ]; then
+        detected_services+=("Solana script")
+        service_types+=("solana")
+        ledger_paths+=($(grep "\--ledger" "$solana_script_file" 2>/dev/null | awk '{ print $2 }'))
+        snapshot_paths+=($(grep "\--snapshots" "$solana_script_file" 2>/dev/null | awk '{ print $2 }'))
+        inc_snapshot_paths+=($(grep "\--incremental-snapshot-archive-path" "$solana_script_file" 2>/dev/null | awk '{ print $2 }'))
+        echo "Found Solana validator script: $solana_script_file"
     fi
 
     # Check for Firedancer config
     if [ -f "$firedancer_config" ]; then
-        LEDGER=$(awk '/^\[ledger\]/ {in_ledger=1; next} /^\[/ && !/^\[ledger\]/ {in_ledger=0} in_ledger && $1=="path" {gsub(/"/, "", $3); print $3; exit}' "$firedancer_config" 2>/dev/null)
-        SNAPSHOTS=$(awk '/^\[snapshots\]/ {in_ledger=1; next} /^\[/ && !/^\[snapshots\]/ {in_ledger=0} in_ledger && $1=="path" {gsub(/"/, "", $3); print $3; exit}' "$firedancer_config" 2>/dev/null)
-        SERVICE_TYPE="firedancer"
-        SERVICE_NAME="firedancer"
-        echo "Using Firedancer config file: $firedancer_config"
-        return 0
+        detected_services+=("Firedancer")
+        service_types+=("firedancer")
+        ledger_paths+=($(awk '/^\[ledger\]/ {in_ledger=1; next} /^\[/ && !/^\[ledger\]/ {in_ledger=0} in_ledger && $1=="path" {gsub(/"/, "", $3); print $3; exit}' "$firedancer_config" 2>/dev/null))
+        snapshot_paths+=($(awk '/^\[snapshots\]/ {in_ledger=1; next} /^\[/ && !/^\[snapshots\]/ {in_ledger=0} in_ledger && $1=="path" {gsub(/"/, "", $3); print $3; exit}' "$firedancer_config" 2>/dev/null))
+        inc_snapshot_paths+=("")
+        echo "Found Firedancer config file: $firedancer_config"
     fi
 
-    echo "No configuration files found."
-    return 1
+    # If multiple services detected, prompt for selection
+    if [ ${#detected_services[@]} -gt 1 ]; then
+        echo "Multiple validator services detected. Please select which one to use:"
+        for i in "${!detected_services[@]}"; do
+            echo "[$i] ${detected_services[$i]}"
+        done
+
+        read -p "Enter selection number [0-$((${#detected_services[@]}-1))]: " selection
+
+        # Validate input
+        if ! [[ "$selection" =~ ^[0-9]+$ ]] || [ "$selection" -lt 0 ] || [ "$selection" -ge ${#detected_services[@]} ]; then
+            echo "Invalid selection. Using the first option."
+            selection=0
+        fi
+
+        # Set variables based on selection
+        SERVICE_TYPE="${service_types[$selection]}"
+        SERVICE_NAME="${service_types[$selection]}"
+        LEDGER="${ledger_paths[$selection]}"
+        SNAPSHOTS="${snapshot_paths[$selection]}"
+        INC_SNAPSHOTS="${inc_snapshot_paths[$selection]}"
+
+        echo "Selected ${detected_services[$selection]}."
+    elif [ ${#detected_services[@]} -eq 1 ]; then
+        # Only one service detected, use it
+        SERVICE_TYPE="${service_types[0]}"
+        SERVICE_NAME="${service_types[0]}"
+        LEDGER="${ledger_paths[0]}"
+        SNAPSHOTS="${snapshot_paths[0]}"
+        INC_SNAPSHOTS="${inc_snapshot_paths[0]}"
+
+        echo "Using the only detected service: ${detected_services[0]}"
+    else
+        echo "No configuration files found."
+        return 1
+    fi
+
+    return 0
 }
 
 # Get network RPC URL from Solana CLI config
