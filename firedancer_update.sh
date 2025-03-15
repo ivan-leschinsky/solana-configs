@@ -53,7 +53,7 @@ download_file_lfs() {
   local filename="$1"
   local output_file="$2"
   local description="${3:-file}"
-  local git_url="http://raw.githubusercontent.com/ivan-leschinsky/solana-configs/master/binaries/$filename"
+  local git_url="https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/master/binaries/$filename"
 
   echo -e "${CYAN}📥 Downloading ${description} from LFS...${NC}"
 
