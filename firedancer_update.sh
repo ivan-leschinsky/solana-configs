@@ -3,9 +3,9 @@
 set -e
 
 # Initialize helper UI functions
-eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v2.9/helper.sh)"
+eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.7/helper.sh)"
 
-print_multiline_header "Solana Firedancer Updater v3.6.0" \
+print_multiline_header "Solana Firedancer Updater v3.7.0" \
     "This script will perform the following operations" \
     "Update installed firedancer to the latest version or to the specified version from an argument" \
     "Update toml configs and ensure auto-start for firedancer" \
@@ -24,7 +24,27 @@ fi
 
 print_header "Starting updating Firedancer to the $NEW_VERSION..."
 
-update_fd() {
+
+# Function to download binary or file
+download_file() {
+  local url="$1"
+  local output_file="$2"
+  local description="${3:-file}"
+
+  echo -e "${CYAN}📥 Downloading ${description}...${NC}"
+
+  curl -L --silent --show-error --fail "$url" -o "$output_file"
+
+  if [ $? -eq 0 ] && [ -f "$output_file" ]; then
+    echo -e "${GREEN}✅ Successfully downloaded ${description}!${NC}"
+    return 0
+  else
+    echo -e "${RED}❌ Failed to download ${description}.${NC}"
+    return 1
+  fi
+}
+
+compile_fd() {
   USERNAME="firedancer"
   USER_ID=$(id -u "$USERNAME")
   GROUP_ID=$(id -g "$USERNAME")
@@ -45,6 +65,47 @@ update_fd() {
 
   ./deps.sh </dev/tty
   make -j fdctl solana
+}
+
+update_fd() {
+  install_packages jq
+
+  # Create version-specific directory for downloaded binaries
+  DOWNLOAD_DIR="/root/firedancer-${NEW_VERSION}"
+  mkdir -p "$DOWNLOAD_DIR"
+
+  # Check if pre-compiled binary is available
+  AVAILABILITY_URL="https://api.vano.one/files/fdctl-${NEW_VERSION}"
+  AVAILABILITY_RESPONSE=$(curl -s "$AVAILABILITY_URL")
+
+  if echo "$AVAILABILITY_RESPONSE" | jq -e '.available == true' > /dev/null 2>&1; then
+    if ask_yes_no "Download pre-compiled binaries for firedancer ${NEW_VERSION} instead of compiling?" "y"; then
+      FDCTL_URL="https://api.vano.one/static/fdctl-${NEW_VERSION}"
+      SOLANA_URL="https://api.vano.one/static/solana-${NEW_VERSION}"
+
+      download_file "$FDCTL_URL" "${DOWNLOAD_DIR}/fdctl" "fdctl binary"
+      chmod +x "${DOWNLOAD_DIR}/fdctl"
+      download_file "$SOLANA_URL" "${DOWNLOAD_DIR}/solana" "solana binary"
+      chmod +x "${DOWNLOAD_DIR}/solana"
+
+      # Create a marker file to indicate binaries were downloaded, not compiled
+      touch "${DOWNLOAD_DIR}/downloaded"
+
+      # Verify files downloaded correctly
+      if [ -f "${DOWNLOAD_DIR}/fdctl" ] && [ -f "${DOWNLOAD_DIR}/solana" ]; then
+        echo -e "${GREEN}✅ Firedancer binaries downloaded successfully!${NC}"
+        return 0
+      else
+        echo -e "${RED}❌ Failed to download Firedancer binaries.${NC}"
+        return 1
+      fi
+    else
+      compile_fd
+    fi
+  else
+    echo -e "${YELLOW}⚠️ Pre-compiled binaries for version ${NEW_VERSION} are not available. Proceeding with compilation.${NC}"
+    compile_fd
+  fi
 }
 
 configure_fd() {
@@ -163,6 +224,7 @@ is_file_busy() {
 
 copy_when_free() {
   local FILES=("/usr/local/bin/fdctl" "/usr/local/bin/solana")
+  local DOWNLOAD_DIR="/root/firedancer-${NEW_VERSION}"
 
   while true; do
     ALL_FREE=true
@@ -176,7 +238,19 @@ copy_when_free() {
 
     if $ALL_FREE; then
       echo -e "Copying ${RED}fdctl${NC} and ${RED}solana${NC} binary files..."
-      cp /root/firedancer/build/native/gcc/bin/* /usr/local/bin/
+
+      # Check if we downloaded binaries or compiled them
+      if [ -f "${DOWNLOAD_DIR}/downloaded" ]; then
+        # Copy from downloaded directory
+        cp ${DOWNLOAD_DIR}/fdctl /usr/local/bin/
+        cp ${DOWNLOAD_DIR}/solana /usr/local/bin/
+        echo -e "${GREEN}✅ Copied downloaded binaries to /usr/local/bin/${NC}"
+      else
+        # Copy from compiled directory
+        cp /root/firedancer/build/native/gcc/bin/* /usr/local/bin/
+        echo -e "${GREEN}✅ Copied compiled binaries to /usr/local/bin/${NC}"
+      fi
+
       break
     fi
     echo -e "${YELLOW}Waiting for solana,fdctl files to be free...${NC}"
@@ -247,25 +321,17 @@ EOF
   fi
 }
 
-# ask_add_autoboot() {
-#   # Check if fd-boot service already exists and is enabled
-#   if systemctl is-enabled --quiet firedancer.service 2>/dev/null; then
-#     echo "firedancer service is already set up and enabled. Skipping auto start configuration."
-#     return
-#   fi
-
-#   read -p "Do you want to auto start Firedancer init and service on server reboot? (Y/n): " choice
-#   choice=${choice:-Y}  # Default to Y if empty (user pressed Enter)
-#   case "$choice" in
-#     [Yy]* ) add_firedancer_start;;
-#     * ) echo "ok, skipping auto start";;
-#   esac
-# }
+REBOOT_AFTER_UPDATE="n"
 
 if check_root; then
   add_firedancer_start
-  update_fd
   configure_fd
+  update_fd
+
+  if ask_yes_no "Do you want to reboot the system after Firedancer update?" "y"; then
+    REBOOT_AFTER_UPDATE="y"
+  fi
+
   if command_exists "agave-validator"; then
     print_header "Waiting to restart Firedancer"
     if wait_for_restart_window; then
@@ -279,16 +345,26 @@ if check_root; then
 
   echo
 
-  print_multiline_header "Almost finished" \
-    "After any server reboot run immediately after boot:" \
-    "fdctl configure init all --config /home/firedancer/solana_fd/solana-testnet.toml" \
-    "service firedancer start" \
-    "" \
-    "You can also try to start directly:  service firedancer start" \
-    "and then check status with:          service firedancer status" \
-    "if it works fine - no need to reboot the server" \
-    "" \
-    "Good luck"
+  if [ "$REBOOT_AFTER_UPDATE" = "y" ]; then
+    print_multiline_header "Almost finished" \
+    "Rebooting server, after that need to check status of the firedancer with:" \
+      "service firedancer status" \
+      "" \
+      "If it fails - start it manually:  service firedancer start" \
+      "" \
+      "Good luck"
+    reboot now
+  else
+    print_multiline_header "Almost finished" \
+      "After any server reboot run immediately after boot:" \
+      "service firedancer start" \
+      "" \
+      "You can also try to start directly:  service firedancer start" \
+      "and then check status with:          service firedancer status" \
+      "if it works fine - no need to reboot the server" \
+      "" \
+      "Good luck"
+  fi
 else
   echo -e "${RED}❌ This script must be run as root user.${NC}"
   exit 1

@@ -71,6 +71,51 @@ check_solana_cli() {
   fi
 }
 
+# Function to ask a question with yes/no response
+# Usage examples:
+#   ask_yes_no "Do you want to proceed?" "y"  # Default to yes
+#   ask_yes_no "Delete all files?" "n"        # Default to no
+#   ask_yes_no "Continue installation?"       # No default, must explicitly answer
+ask_yes_no() {
+  local question="$1"
+  local default="${2:-}"  # Default value (y/n or empty)
+
+  local prompt="$question"
+  local default_upper=""
+
+  # Format the prompt based on the default value
+  if [ "$default" = "y" ] || [ "$default" = "Y" ]; then
+    prompt="$question [Y/n] "
+    default_upper="Y"
+  elif [ "$default" = "n" ] || [ "$default" = "N" ]; then
+    prompt="$question [y/N] "
+    default_upper="N"
+  else
+    prompt="$question [y/n] "
+    default_upper=""
+  fi
+
+  local answer
+  while true; do
+    echo -en "${CYAN}$prompt${NC}"
+    read -r answer
+
+    # Convert to lowercase for comparison
+    answer=$(echo "$answer" | tr '[:upper:]' '[:lower:]')
+
+    # Handle empty response with default
+    if [ -z "$answer" ] && [ -n "$default" ]; then
+      answer=$(echo "$default" | tr '[:upper:]' '[:lower:]')
+    fi
+
+    case "$answer" in
+      y|yes) return 0 ;;
+      n|no) return 1 ;;
+      *) echo -e "${YELLOW}⚠️  Please answer with 'yes' or 'no' (or y/n).${NC}" ;;
+    esac
+  done
+}
+
 # Function to validate and get Solana address
 get_solana_address() {
   local address
