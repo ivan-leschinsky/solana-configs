@@ -55,5 +55,5 @@ Script  to install status check with uptime kuma:
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://api.vano.one/snapshot-finder)"
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/master/snapshot_finder.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.5.0/snapshot_finder.sh)"
 ```
