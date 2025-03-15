@@ -301,6 +301,7 @@ After=network.target
 # User=root
 # Group=root
 ExecStart=/bin/bash -c ' \\
+  for i in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance > $i; done && \\
   /usr/local/bin/fdctl configure init all --config /home/firedancer/solana_fd/solana-testnet.toml && \\
   /usr/local/bin/fdctl run --config /home/firedancer/solana_fd/solana-testnet.toml'
 Restart=on-failure
@@ -336,7 +337,7 @@ if check_root; then
 
   if $DOWNLOADED; then
     REBOOT_AFTER_UPDATE="n"
-    echo -e "${GREEN}Using downloaded binaries, reboot not required.${NC}"
+    # echo -e "${GREEN}Using downloaded binaries, reboot not required.${NC}"
   elif ask_yes_no "Do you want to reboot the system after Firedancer update?" "y"; then
     REBOOT_AFTER_UPDATE="y"
   fi
@@ -364,15 +365,21 @@ if check_root; then
       "Good luck"
     reboot now
   else
-    print_multiline_header "Almost finished" \
-      "After any server reboot run immediately after boot:" \
-      "service firedancer start" \
-      "" \
-      "You can also try to start directly:  service firedancer start" \
-      "and then check status with:          service firedancer status" \
-      "if it works fine - no need to reboot the server" \
-      "" \
-      "Good luck"
+    if $DOWNLOADED; then
+      print_multiline_header "Finished" \
+        "Check status now:" \
+        "service firedancer status"
+    else
+      print_multiline_header "Almost finished" \
+        "After any server reboot run immediately after boot:" \
+        "service firedancer start" \
+        "" \
+        "You can also try to start directly:  service firedancer start" \
+        "and then check status with:          service firedancer status" \
+        "if it works fine - no need to reboot the server" \
+        "" \
+        "Good luck"
+    fi
   fi
 else
   echo -e "${RED}❌ This script must be run as root user.${NC}"
