@@ -5,7 +5,7 @@ set -e
 # Initialize helper UI functions
 eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.7.0/helper.sh)"
 
-print_multiline_header "Solana Firedancer Updater v3.8.0" \
+print_multiline_header "Solana Firedancer Updater v3.8.2" \
     "This script will perform the following operations" \
     "Update installed firedancer to the latest version or to the specified version from an argument" \
     "Update toml configs and ensure auto-start for firedancer" \
@@ -18,7 +18,12 @@ print_multiline_header "Solana Firedancer Updater v3.8.0" \
 if [ -n "$1" ] && [ ${#1} -gt 8 ]; then
   NEW_VERSION="$1"
 else
-  echo -e "${RED}❌ Need to pass version as argument to this script.${NC}"
+  NEW_VERSION=$(curl -s https://api.vano.one/fd-version)
+  if [ -n "$NEW_VERSION" ]; then
+    echo -e "${YELLOW}ℹ️ Using firedancer version: $NEW_VERSION${NC}"
+  else
+    echo -e "${RED}❌ Need to pass version as argument to this script.${NC}"
+  fi
   exit 1
 fi
 
