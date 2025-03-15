@@ -3,9 +3,9 @@
 set -e
 
 # Initialize helper UI functions
-eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.7/helper.sh)"
+eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.7.0/helper.sh)"
 
-print_multiline_header "Solana Firedancer Updater v3.7.0" \
+print_multiline_header "Solana Firedancer Updater v3.7.1" \
     "This script will perform the following operations" \
     "Update installed firedancer to the latest version or to the specified version from an argument" \
     "Update toml configs and ensure auto-start for firedancer" \
@@ -33,13 +33,17 @@ download_file() {
 
   echo -e "${CYAN}📥 Downloading ${description}...${NC}"
 
-  curl -L --silent --show-error --fail "$url" -o "$output_file"
+  # Using curl with progress bar for large files
+  curl -L --progress-bar "$url" -o "$output_file"
 
-  if [ $? -eq 0 ] && [ -f "$output_file" ]; then
-    echo -e "${GREEN}✅ Successfully downloaded ${description}!${NC}"
+  local result=$?
+
+  if [ $result -eq 0 ] && [ -f "$output_file" ]; then
+    local filesize=$(du -h "$output_file" | cut -f1)
+    echo -e "${GREEN}✅ Successfully downloaded ${description}! (Size: ${filesize})${NC}"
     return 0
   else
-    echo -e "${RED}❌ Failed to download ${description}.${NC}"
+    echo -e "${RED}❌ Failed to download ${description}. Error code: ${result}${NC}"
     return 1
   fi
 }
