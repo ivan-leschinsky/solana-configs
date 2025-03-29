@@ -150,6 +150,7 @@ update_fd() {
   DOWNLOAD_DIR="/root/firedancer-${NEW_VERSION}"
   mkdir -p "$DOWNLOAD_DIR"
 
+  USERNAME="firedancer"
   USER_ID=$(id -u "$USERNAME")
   # Check if pre-compiled binary is available
   AVAILABILITY_URL="https://api.vano.one/files/fdctl-${NEW_VERSION}"
