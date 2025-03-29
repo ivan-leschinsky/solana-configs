@@ -6,7 +6,7 @@ set -e
 # Initialize helper UI functions
 eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.7.0/helper.sh)"
 
-print_multiline_header "Solana Firedancer Updater v3.10.1" \
+print_multiline_header "Solana Firedancer Updater v3.11.0" \
     "This script will perform the following operations" \
     "Update installed firedancer to the latest version or to the specified version from an argument" \
     "Update toml configs and ensure auto-start for firedancer" \
@@ -150,52 +150,54 @@ update_fd() {
   DOWNLOAD_DIR="/root/firedancer-${NEW_VERSION}"
   mkdir -p "$DOWNLOAD_DIR"
 
+  USER_ID=$(id -u "$USERNAME")
   # Check if pre-compiled binary is available
   AVAILABILITY_URL="https://api.vano.one/files/fdctl-${NEW_VERSION}"
+  if [ "$USER_ID" -ne 1000 ]; then
+    AVAILABILITY_URL="https://api.vano.one/files/fdctl-${NEW_VERSION}-${USER_ID}"
+  fi
   AVAILABILITY_RESPONSE=$(curl -s "$AVAILABILITY_URL")
 
-  # also check for $(id -u "$USERNAME") is equal to 1000
-  if [ "$(id -u "firedancer")" -eq 1000 ]; then
-    if echo "$AVAILABILITY_RESPONSE" | jq -e '.available == true' > /dev/null 2>&1; then
-      if ask_yes_no "Download pre-compiled binaries for firedancer ${NEW_VERSION} instead of compiling?" "y"; then
-        FDCTL_URL="https://solana-api.vano.one/fdctl-${NEW_VERSION}"
-        SOLANA_URL="https://solana-api.vano.one/solana-${NEW_VERSION}"
+  if echo "$AVAILABILITY_RESPONSE" | jq -e '.available == true' > /dev/null 2>&1; then
+    if ask_yes_no "Download pre-compiled binaries for firedancer ${NEW_VERSION} instead of compiling?" "y"; then
+      FDCTL_URL="https://solana-api.vano.one/fdctl-${NEW_VERSION}"
+      SOLANA_URL="https://solana-api.vano.one/solana-${NEW_VERSION}"
+      if [ "$USER_ID" -ne 1000 ]; then
+        FDCTL_URL="https://solana-api.vano.one/fdctl-${NEW_VERSION}-${USER_ID}"
+        SOLANA_URL="https://solana-api.vano.one/solana-${NEW_VERSION}-${USER_ID}"
+      fi
 
-        # Download fdctl and check if successful
-        if ! download_file "$FDCTL_URL" "${DOWNLOAD_DIR}/fdctl" "fdctl binary"; then
-          echo -e "${RED}❌ Failed to download fdctl binary. Falling back to compilation.${NC}"
-          compile_fd
-          return
-        fi
+      # Download fdctl and check if successful
+      if ! download_file "$FDCTL_URL" "${DOWNLOAD_DIR}/fdctl" "fdctl binary"; then
+        echo -e "${RED}❌ Failed to download fdctl binary. Falling back to compilation.${NC}"
+        compile_fd
+        return
+      fi
 
-        # Download solana and check if successful
-        if ! download_file "$SOLANA_URL" "${DOWNLOAD_DIR}/solana" "solana binary"; then
-          echo -e "${RED}❌ Failed to download solana binary. Falling back to compilation.${NC}"
-          compile_fd
-          return
-        fi
+      # Download solana and check if successful
+      if ! download_file "$SOLANA_URL" "${DOWNLOAD_DIR}/solana" "solana binary"; then
+        echo -e "${RED}❌ Failed to download solana binary. Falling back to compilation.${NC}"
+        compile_fd
+        return
+      fi
 
-        # Verify files exist and are executable
-        if [ -f "${DOWNLOAD_DIR}/fdctl" ] && [ -f "${DOWNLOAD_DIR}/solana" ]; then
-          chmod +x "${DOWNLOAD_DIR}/fdctl" "${DOWNLOAD_DIR}/solana"
+      # Verify files exist and are executable
+      if [ -f "${DOWNLOAD_DIR}/fdctl" ] && [ -f "${DOWNLOAD_DIR}/solana" ]; then
+        chmod +x "${DOWNLOAD_DIR}/fdctl" "${DOWNLOAD_DIR}/solana"
 
-          # Create a marker file to indicate binaries were downloaded, not compiled
-          touch "${DOWNLOAD_DIR}/downloaded"
-          DOWNLOADED=true
+        # Create a marker file to indicate binaries were downloaded, not compiled
+        touch "${DOWNLOAD_DIR}/downloaded"
+        DOWNLOADED=true
 
-          echo -e "${GREEN}✅ Firedancer binaries downloaded successfully!${NC}"
-        else
-          compile_fd
-        fi
+        echo -e "${GREEN}✅ Firedancer binaries downloaded successfully!${NC}"
       else
         compile_fd
       fi
     else
-      echo -e "${YELLOW}⚠️ Pre-compiled binaries for version ${NEW_VERSION} are not available. Proceeding with compilation.${NC}"
       compile_fd
     fi
   else
-    echo -e "${YELLOW}⚠️ Pre-compiled binaries for version ${NEW_VERSION} are available for user firedancer with id#1000. Proceeding with compilation.${NC}"
+    echo -e "${YELLOW}⚠️ Pre-compiled binaries for version ${NEW_VERSION} and your user ID (#${USER_ID}) are not available. Proceeding with compilation.${NC}"
     compile_fd
   fi
 }
