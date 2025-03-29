@@ -6,7 +6,7 @@ set -e
 # Initialize helper UI functions
 eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.7.0/helper.sh)"
 
-print_multiline_header "Solana Firedancer Updater v3.9.0" \
+print_multiline_header "Solana Firedancer Updater v3.10.0" \
     "This script will perform the following operations" \
     "Update installed firedancer to the latest version or to the specified version from an argument" \
     "Update toml configs and ensure auto-start for firedancer" \
@@ -130,17 +130,11 @@ compile_fd() {
   USERNAME="firedancer"
   USER_ID=$(id -u "$USERNAME")
   GROUP_ID=$(id -g "$USERNAME")
-
-  if [ ! -d "/root/firedancer" ]; then
-    echo "/root/firedancer does not exist, cloning from git..."
-    git clone --recurse-submodules https://github.com/firedancer-io/firedancer.git
-  fi
-
+  rm -rf /root/firedancer
+  git clone --recurse-submodules https://github.com/firedancer-io/firedancer.git
   cd /root/firedancer
-  git checkout .
-  git fetch
+  git pull
   git checkout $NEW_VERSION
-  rm -rf agave
   git submodule update --init --recursive
   sed -i "/^[ \t]*results\[ 0 \] = pwd\.pw_uid/c results[ 0 ] = $USER_ID;" ~/firedancer/src/app/fdctl/config.c
   sed -i "/^[ \t]*results\[ 1 \] = pwd\.pw_gid/c results[ 1 ] = $GROUP_ID;" ~/firedancer/src/app/fdctl/config.c
@@ -160,49 +154,54 @@ update_fd() {
   AVAILABILITY_URL="https://api.vano.one/files/fdctl-${NEW_VERSION}"
   AVAILABILITY_RESPONSE=$(curl -s "$AVAILABILITY_URL")
 
-  if echo "$AVAILABILITY_RESPONSE" | jq -e '.available == true' > /dev/null 2>&1; then
-    if ask_yes_no "Download pre-compiled binaries for firedancer ${NEW_VERSION} instead of compiling?" "y"; then
-      FDCTL_URL="https://solana-api.vano.one/fdctl-${NEW_VERSION}"
-      SOLANA_URL="https://solana-api.vano.one/solana-${NEW_VERSION}"
+  # also check for $(id -u "$USERNAME") is equal to 1000
+  if [ "$(id -u "firedancer")" -eq 1000 ]; then
+    if echo "$AVAILABILITY_RESPONSE" | jq -e '.available == true' > /dev/null 2>&1; then
+      if ask_yes_no "Download pre-compiled binaries for firedancer ${NEW_VERSION} instead of compiling?" "y"; then
+        FDCTL_URL="https://solana-api.vano.one/fdctl-${NEW_VERSION}"
+        SOLANA_URL="https://solana-api.vano.one/solana-${NEW_VERSION}"
 
-      # Download fdctl and check if successful
-      if ! download_file "$FDCTL_URL" "${DOWNLOAD_DIR}/fdctl" "fdctl binary"; then
-        echo -e "${RED}❌ Failed to download fdctl binary. Falling back to compilation.${NC}"
-        compile_fd
-        return
-      fi
+        # Download fdctl and check if successful
+        if ! download_file "$FDCTL_URL" "${DOWNLOAD_DIR}/fdctl" "fdctl binary"; then
+          echo -e "${RED}❌ Failed to download fdctl binary. Falling back to compilation.${NC}"
+          compile_fd
+          return
+        fi
 
-      # Download solana and check if successful
-      if ! download_file "$SOLANA_URL" "${DOWNLOAD_DIR}/solana" "solana binary"; then
-        echo -e "${RED}❌ Failed to download solana binary. Falling back to compilation.${NC}"
-        compile_fd
-        return
-      fi
+        # Download solana and check if successful
+        if ! download_file "$SOLANA_URL" "${DOWNLOAD_DIR}/solana" "solana binary"; then
+          echo -e "${RED}❌ Failed to download solana binary. Falling back to compilation.${NC}"
+          compile_fd
+          return
+        fi
 
-      # Verify files exist and are executable
-      if [ -f "${DOWNLOAD_DIR}/fdctl" ] && [ -f "${DOWNLOAD_DIR}/solana" ]; then
-        chmod +x "${DOWNLOAD_DIR}/fdctl" "${DOWNLOAD_DIR}/solana"
+        # Verify files exist and are executable
+        if [ -f "${DOWNLOAD_DIR}/fdctl" ] && [ -f "${DOWNLOAD_DIR}/solana" ]; then
+          chmod +x "${DOWNLOAD_DIR}/fdctl" "${DOWNLOAD_DIR}/solana"
 
-        # Create a marker file to indicate binaries were downloaded, not compiled
-        touch "${DOWNLOAD_DIR}/downloaded"
-        DOWNLOADED=true
+          # Create a marker file to indicate binaries were downloaded, not compiled
+          touch "${DOWNLOAD_DIR}/downloaded"
+          DOWNLOADED=true
 
-        echo -e "${GREEN}✅ Firedancer binaries downloaded successfully!${NC}"
+          echo -e "${GREEN}✅ Firedancer binaries downloaded successfully!${NC}"
+        else
+          compile_fd
+        fi
       else
         compile_fd
       fi
     else
+      echo -e "${YELLOW}⚠️ Pre-compiled binaries for version ${NEW_VERSION} are not available. Proceeding with compilation.${NC}"
       compile_fd
     fi
   else
-    echo -e "${YELLOW}⚠️ Pre-compiled binaries for version ${NEW_VERSION} are not available. Proceeding with compilation.${NC}"
+    echo -e "${YELLOW}⚠️ Pre-compiled binaries for version ${NEW_VERSION} are available for user firedancer with id#1000. Proceeding with compilation.${NC}"
     compile_fd
   fi
 }
 
 configure_fd() {
   mkdir -p /home/firedancer/solana_fd
-  chown -R firedancer:firedancer /home/firedancer/solana_fd/
 
   if [ ! -f "/home/firedancer/solana_fd/validator-keypair.json" ] && [ -f "/root/solana/validator-keypair.json" ]; then
     cp /root/solana/validator-keypair.json /home/firedancer/solana_fd/validator-keypair.json
@@ -302,6 +301,7 @@ dynamic_port_range = "8004-8024"
     commission_bps = 10000
 
 EOF
+chown -R firedancer:firedancer /home/firedancer/solana_fd/
 }
 
 is_file_busy() {
@@ -448,7 +448,11 @@ if check_root; then
     update_fd
   else
     print_header "No update required, as you already have $NEW_VERSION version of the firedancer."
-    exit 1
+    if ask_yes_no "Do you want to force update to the Firedancer $NEW_VERSION ?"; then
+      update_fd
+    else
+      exit 1
+    fi
   fi
 
   # if $DOWNLOADED; then
