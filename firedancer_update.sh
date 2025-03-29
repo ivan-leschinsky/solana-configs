@@ -6,7 +6,7 @@ set -e
 # Initialize helper UI functions
 eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.7.0/helper.sh)"
 
-print_multiline_header "Solana Firedancer Updater v3.8.7" \
+print_multiline_header "Solana Firedancer Updater v3.9.0" \
     "This script will perform the following operations" \
     "Update installed firedancer to the latest version or to the specified version from an argument" \
     "Update toml configs and ensure auto-start for firedancer" \
@@ -21,7 +21,7 @@ if [ -n "$1" ] && [ ${#1} -gt 8 ]; then
 else
   NEW_VERSION=$(curl -s https://api.vano.one/fd-version)
   if [ -n "$NEW_VERSION" ]; then
-    echo -e "${YELLOW}ℹ️ Using firedancer version: $NEW_VERSION${NC}"
+    echo -e "${YELLOW}ℹ️  Using firedancer version: $NEW_VERSION${NC}"
   else
     echo -e "${RED}❌ Need to pass version as argument to this script.${NC}"
     exit 1
@@ -375,8 +375,22 @@ restart_with_copy() {
   fi
 }
 
+ensure_cpu_performance_script() {
+  cat > /root/cpu_performance.sh <<EOF
+#!/bin/bash
+
+for i in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance > \$i; done
+echo "CPU performance enabled"
+exit 0
+EOF
+
+  chmod +x /root/cpu_performance.sh
+}
+
 add_firedancer_start() {
   print_header "Setting up Firedancer boot script..."
+
+  ensure_cpu_performance_script
 
   # Create/update the systemd service file
   cat > /etc/systemd/system/firedancer.service <<EOF
@@ -389,6 +403,7 @@ After=network.target
 # User=root
 # Group=root
 ExecStart=/bin/bash -c ' \\
+  /root/cpu_performance.sh && \\
   /usr/local/bin/fdctl configure init all --config /home/firedancer/solana_fd/solana-testnet.toml && \\
   /usr/local/bin/fdctl run --config /home/firedancer/solana_fd/solana-testnet.toml'
 Restart=on-failure
@@ -415,10 +430,26 @@ EOF
   fi
 }
 
+need_to_update_fd() {
+  if [ "v$(fdctl version | cut -d' ' -f1)" == "$NEW_VERSION" ]; then
+    return 1
+  fi
+
+  echo "Update required, as current version: $(fdctl version | cut -d' ' -f1) does not match $NEW_VERSION"
+  return 0
+}
+
 if check_root; then
   add_firedancer_start
   configure_fd
-  update_fd
+  print_header "Configs successfully updated"
+
+  if need_to_update_fd; then
+    update_fd
+  else
+    print_header "No update required, as you already have $NEW_VERSION version of the firedancer."
+    exit 1
+  fi
 
   # if $DOWNLOADED; then
   #   REBOOT_AFTER_UPDATE="n"

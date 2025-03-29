@@ -40,11 +40,11 @@ Script  to install status check with uptime kuma:
 ```bash
 # Latest version:
 /bin/bash -c "$(curl -fsSL https://api.vano.one/fd-update)"
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.8.7/firedancer_update.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.9.0/firedancer_update.sh)"
 
 # With version as an argument
-/bin/bash -c "$(curl -fsSL https://api.vano.one/fd-update)" _ v0.407.20113
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.8.7/firedancer_update.sh)" _ v0.407.20113
+/bin/bash -c "$(curl -fsSL https://api.vano.one/fd-update)" _ v0.409.20113
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.9.0/firedancer_update.sh)" _ v0.409.20113
 ```
 
 
@@ -56,7 +56,7 @@ Script  to install status check with uptime kuma:
 
 
 
-### Firedancer snapshot finder
+### Firedancer/agave snapshot finder
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://api.vano.one/snapshot-finder)"
