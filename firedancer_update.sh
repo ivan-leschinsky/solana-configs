@@ -6,7 +6,7 @@ set -e
 # Initialize helper UI functions
 eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.7.0/helper.sh)"
 
-print_multiline_header "Solana Firedancer Updater v3.10.0" \
+print_multiline_header "Solana Firedancer Updater v3.10.1" \
     "This script will perform the following operations" \
     "Update installed firedancer to the latest version or to the specified version from an argument" \
     "Update toml configs and ensure auto-start for firedancer" \
@@ -467,16 +467,16 @@ if check_root; then
 
   if command_exists "agave-validator"; then
     print_header "Waiting to restart Firedancer"
-    if wait_for_restart_window; then
-      restart_with_copy
-    fi
+
+    wait_for_restart_window
+    restart_with_copy
   else
     if download_file "$AGAVE_VALIDATOR_URL" "/usr/local/bin/agave-validator" "agave-validator binary"; then
       chmod +x /usr/local/bin/agave-validator
       print_header "Waiting to restart Firedancer"
-      if wait_for_restart_window; then
-        restart_with_copy
-      fi
+
+      wait_for_restart_window
+      restart_with_copy
     else
       echo -e "${RED}❌ Failed to download agave-validator binary. Falling back to simple restart.${NC}"
       restart_with_copy
