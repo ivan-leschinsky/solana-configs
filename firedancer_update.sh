@@ -6,7 +6,7 @@ set -e
 # Initialize helper UI functions
 eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.7.0/helper.sh)"
 
-print_multiline_header "Solana Firedancer Updater v3.11.0" \
+print_multiline_header "Solana Firedancer Updater v3.12.0" \
     "This script will perform the following operations" \
     "Update installed firedancer to the latest version or to the specified version from an argument" \
     "Update toml configs and ensure auto-start for firedancer" \
@@ -434,11 +434,14 @@ EOF
 }
 
 need_to_update_fd() {
-  if [ "v$(fdctl version | cut -d' ' -f1)" == "$NEW_VERSION" ]; then
+  versionsOutput="$(fdctl version --config /home/firedancer/solana_fd/solana-testnet.toml)"
+  CURRENT_VERSION=$(echo "$versionsOutput" | tail -n 1 | cut -d' ' -f1)
+
+  if [ "v${CURRENT_VERSION}" == "$NEW_VERSION" ]; then
     return 1
   fi
 
-  echo "Update required, as current version: $(fdctl version | cut -d' ' -f1) does not match $NEW_VERSION"
+  echo "Update required, as current version: v${CURRENT_VERSION} does not match $NEW_VERSION"
   return 0
 }
 
