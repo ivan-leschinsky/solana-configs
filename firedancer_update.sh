@@ -6,7 +6,7 @@ set -e
 # Initialize helper UI functions
 eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.7.0/helper.sh)"
 
-print_multiline_header "Solana Firedancer Updater v3.12.0" \
+print_multiline_header "Solana Firedancer Updater v3.13.0" \
     "This script will perform the following operations" \
     "Update installed firedancer to the latest version or to the specified version from an argument" \
     "Update toml configs and ensure auto-start for firedancer" \
@@ -450,6 +450,14 @@ if check_root; then
   configure_fd
   print_header "Configs successfully updated"
 
+  if ask_yes_no "Do you want to reboot the system after Firedancer update?" "y"; then
+    REBOOT_AFTER_UPDATE="y"
+  fi
+
+  if ask_yes_no "Do you want to wait for the restart window? If you anwer with no, you will need to start Firedancer manually after the update." "y"; then
+    WAIT_FOR_RESTART_WINDOW="y"
+  fi
+
   if need_to_update_fd; then
     update_fd
   else
@@ -467,31 +475,36 @@ if check_root; then
   # elif ask_yes_no "Do you want to reboot the system after Firedancer update?" "y"; then
   #   REBOOT_AFTER_UPDATE="y"
   # fi
-  if ask_yes_no "Do you want to reboot the system after Firedancer update?" "y"; then
-    REBOOT_AFTER_UPDATE="y"
-  fi
-
-  if command_exists "agave-validator"; then
-    print_header "Waiting to restart Firedancer"
-
-    wait_for_restart_window
-    restart_with_copy
-  else
-    if download_file "$AGAVE_VALIDATOR_URL" "/usr/local/bin/agave-validator" "agave-validator binary"; then
-      chmod +x /usr/local/bin/agave-validator
+  # if ask_yes_no "Do you want to reboot the system after Firedancer update?" "y"; then
+  #   REBOOT_AFTER_UPDATE="y"
+  # fi
+  if [ "$WAIT_FOR_RESTART_WINDOW" = "y" ]; then
+    if command_exists "agave-validator"; then
       print_header "Waiting to restart Firedancer"
 
       wait_for_restart_window
       restart_with_copy
     else
-      echo -e "${RED}❌ Failed to download agave-validator binary. Falling back to simple restart.${NC}"
-      restart_with_copy
+      if download_file "$AGAVE_VALIDATOR_URL" "/usr/local/bin/agave-validator" "agave-validator binary"; then
+        chmod +x /usr/local/bin/agave-validator
+        print_header "Waiting to restart Firedancer"
+
+        wait_for_restart_window
+        restart_with_copy
+      else
+        echo -e "${RED}❌ Failed to download agave-validator binary. Falling back to simple restart.${NC}"
+        restart_with_copy
+      fi
     fi
+
+    print_header "${GREEN}Started Firedancer, check service status please${NC}"
+
+    echo
+  else
+    restart_with_copy
+    print_header "${GREEN}Started Firedancer, check service status please${NC}"
+    echo
   fi
-
-  print_header "${GREEN}Started Firedancer, check service status please${NC}"
-
-  echo
 
   if [ "$REBOOT_AFTER_UPDATE" = "y" ]; then
     print_multiline_header "Almost finished" \
@@ -509,12 +522,11 @@ if check_root; then
         "service firedancer status"
     else
       print_multiline_header "Almost finished" \
-        "After any server reboot run immediately after boot:" \
-        "service firedancer start" \
-        "" \
-        "You can also try to start directly:  service firedancer start" \
-        "and then check status with:          service firedancer status" \
+        "After any server reboot you can check status with:" \
+        "service firedancer status" \
         "if it works fine - no need to reboot the server" \
+        "if it fails - start it manually:  service firedancer start  "\
+        "and then check logs with:  journalctl -u firedancer -f" \
         "" \
         "Good luck"
     fi
