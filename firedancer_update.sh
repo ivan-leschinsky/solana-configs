@@ -6,19 +6,40 @@ set -e
 # Initialize helper UI functions
 eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.7.0/helper.sh)"
 
-print_multiline_header "Solana Firedancer Updater v3.15.0" \
+print_multiline_header "Solana Firedancer Updater v3.16.0" \
     "This script will perform the following operations" \
     "Update installed firedancer to the latest version or to the specified version from an argument" \
     "Update toml configs and ensure auto-start for firedancer" \
     "firedancer GUI will be enabled on 8080 port" \
+    "Kernel update to 6.8+ for Ubuntu 22.04 (if needed)" \
+    "" \
+    "Usage: /bin/bash -c \"\$(curl -fsSL https://api.vano.one/fd-update)\" _ [version] [--fast]" \
+    "--fast: Skip interactive questions, use automatic answers for fastest update with reboot" \
     "" \
     "Author: vano.one"
 
 # Based on original docs https://docs.firedancer.io/guide/getting-started.html#releases
 
-if [ -n "$1" ] && [ ${#1} -gt 8 ]; then
-  NEW_VERSION="$1"
-else
+# Parse command line arguments
+FAST_MODE=false
+NEW_VERSION=""
+
+for arg in "$@"; do
+  case $arg in
+    --fast)
+      FAST_MODE=true
+      shift
+      ;;
+    *)
+      if [ -z "$NEW_VERSION" ] && [ ${#arg} -gt 8 ]; then
+        NEW_VERSION="$arg"
+      fi
+      shift
+      ;;
+  esac
+done
+
+if [ -z "$NEW_VERSION" ]; then
   NEW_VERSION=$(curl -s https://api.vano.one/fd-version)
   if [ -n "$NEW_VERSION" ]; then
     echo -e "${YELLOW}ℹ️  Using firedancer version: $NEW_VERSION${NC}"
@@ -26,6 +47,10 @@ else
     echo -e "${RED}❌ Need to pass version as argument to this script.${NC}"
     exit 1
   fi
+fi
+
+if [ "$FAST_MODE" = true ]; then
+  echo -e "${CYAN}🚀 Fast mode enabled - using automatic answers${NC}"
 fi
 
 print_header "Starting updating Firedancer to the $NEW_VERSION..."
@@ -160,7 +185,12 @@ update_fd() {
   # Check if binaries already exist in DOWNLOAD_DIR
   if [ -f "${DOWNLOAD_DIR}/fdctl" ] && [ -f "${DOWNLOAD_DIR}/solana" ]; then
     echo -e "${CYAN}📁 Found existing binaries for version ${NEW_VERSION} in ${DOWNLOAD_DIR}${NC}"
-    if ask_yes_no "Use existing binaries instead of downloading or compiling?" "y"; then
+    local use_existing="y"
+    if [ "$FAST_MODE" != true ]; then
+      use_existing=$(ask_yes_no "Use existing binaries instead of downloading or compiling?" "y")
+    fi
+
+    if [ "$use_existing" = "y" ]; then
       chmod +x "${DOWNLOAD_DIR}/fdctl" "${DOWNLOAD_DIR}/solana"
 
       DOWNLOADED=true
@@ -178,7 +208,12 @@ update_fd() {
   AVAILABILITY_RESPONSE=$(curl -s "$AVAILABILITY_URL")
 
   if echo "$AVAILABILITY_RESPONSE" | jq -e '.available == true' > /dev/null 2>&1; then
-    if ask_yes_no "Download pre-compiled binaries for firedancer ${NEW_VERSION} instead of compiling?" "y"; then
+    local download_precompiled="y"
+    if [ "$FAST_MODE" != true ]; then
+      download_precompiled=$(ask_yes_no "Download pre-compiled binaries for firedancer ${NEW_VERSION} instead of compiling?" "y")
+    fi
+
+    if [ "$download_precompiled" = "y" ]; then
       FDCTL_URL="https://solana-api.vano.one/fdctl-${NEW_VERSION}"
       SOLANA_URL="https://solana-api.vano.one/solana-${NEW_VERSION}"
       if [ "$USER_ID" -ne 1000 ]; then
@@ -408,6 +443,49 @@ EOF
   chmod +x /root/cpu_performance.sh
 }
 
+update_kernel_if_needed() {
+  # Check if we're on Ubuntu 22.04
+  if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    if [[ "$VERSION_ID" == "22.04" ]]; then
+      # Get current kernel version
+      CURRENT_KERNEL=$(uname -r | cut -d'-' -f1)
+      KERNEL_MAJOR=$(echo "$CURRENT_KERNEL" | cut -d'.' -f1)
+      KERNEL_MINOR=$(echo "$CURRENT_KERNEL" | cut -d'.' -f2)
+
+      # Check if kernel version is less than 6.8
+      if [ "$KERNEL_MAJOR" -lt 6 ] || ([ "$KERNEL_MAJOR" -eq 6 ] && [ "$KERNEL_MINOR" -lt 8 ]); then
+        echo -e "${YELLOW}⚠️  Current kernel version: $CURRENT_KERNEL (Ubuntu 22.04 detected)${NC}"
+        echo -e "${YELLOW}⚠️  Kernel 6.8+ is recommended for optimal Firedancer performance${NC}"
+
+        if ask_yes_no "Update kernel to 6.8+ for better performance?" "y"; then
+          REBOOT_AFTER_UPDATE="y"
+          print_header "Updating kernel to 6.8+"
+          echo -e "${CYAN}📦 Installing linux-generic-hwe-22.04...${NC}"
+
+          apt update
+          if apt install -y --install-recommends linux-generic-hwe-22.04; then
+            echo -e "${GREEN}✅ Kernel update package installed successfully${NC}"
+            echo -e "${YELLOW}⚠️  System reboot will be required to use the new kernel${NC}"
+            return 0
+          else
+            echo -e "${RED}❌ Failed to install kernel update package${NC}"
+            return 1
+          fi
+        else
+          echo -e "${YELLOW}⚠️  Skipping kernel update${NC}"
+        fi
+      else
+        echo -e "${GREEN}✅ Kernel version $CURRENT_KERNEL is already 6.8+${NC}"
+      fi
+    else
+      echo -e "${CYAN}ℹ️  Not Ubuntu 22.04 (detected: $VERSION_ID), skipping kernel update check${NC}"
+    fi
+  else
+    echo -e "${YELLOW}⚠️  Cannot detect OS version, skipping kernel update check${NC}"
+  fi
+}
+
 add_firedancer_start() {
   print_header "Setting up Firedancer boot script..."
 
@@ -464,16 +542,30 @@ need_to_update_fd() {
 }
 
 if check_root; then
+  update_kernel_if_needed
+
   add_firedancer_start
   configure_fd
   print_header "Configs successfully updated"
 
-  if ask_yes_no "Do you want to reboot the system after Firedancer update?" "y"; then
+  # Handle fast mode for reboot question
+  if [ "$FAST_MODE" = true ]; then
     REBOOT_AFTER_UPDATE="y"
+    echo -e "${CYAN}🚀 Fast mode: Auto-setting reboot after update = YES${NC}"
+  else
+    if ask_yes_no "Do you want to reboot the system after Firedancer update?" "y"; then
+      REBOOT_AFTER_UPDATE="y"
+    fi
   fi
 
-  if ask_yes_no "Do you want to wait for the restart window? If you anwer with no, you will need to start Firedancer manually after the update." "y"; then
-    WAIT_FOR_RESTART_WINDOW="y"
+  # Handle fast mode for restart window question
+  if [ "$FAST_MODE" = true ]; then
+    WAIT_FOR_RESTART_WINDOW="n"
+    echo -e "${CYAN}🚀 Fast mode: Auto-setting wait for restart window = NO${NC}"
+  else
+    if ask_yes_no "Do you want to wait for the restart window? If you anwer with no, you will need to start Firedancer manually after the update." "y"; then
+      WAIT_FOR_RESTART_WINDOW="y"
+    fi
   fi
 
   if need_to_update_fd; then
