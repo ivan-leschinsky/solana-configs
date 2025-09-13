@@ -6,7 +6,7 @@ set -e
 # Initialize helper UI functions
 eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.7.0/helper.sh)"
 
-print_multiline_header "Solana Firedancer Updater v3.13.0" \
+print_multiline_header "Solana Firedancer Updater v3.14.0" \
     "This script will perform the following operations" \
     "Update installed firedancer to the latest version or to the specified version from an argument" \
     "Update toml configs and ensure auto-start for firedancer" \
@@ -141,6 +141,10 @@ compile_fd() {
 
   ./deps.sh </dev/tty
   make -j fdctl solana
+
+  NEW_FD_DIR="/root/firedancer-${NEW_VERSION}"
+  cp /root/firedancer/build/native/gcc/bin/* $NEW_FD_DIR
+  touch $NEW_FD_DIR/compiled
 }
 
 update_fd() {
@@ -152,6 +156,20 @@ update_fd() {
 
   USERNAME="firedancer"
   USER_ID=$(id -u "$USERNAME")
+
+  # Check if binaries already exist in DOWNLOAD_DIR
+  if [ -f "${DOWNLOAD_DIR}/fdctl" ] && [ -f "${DOWNLOAD_DIR}/solana" ]; then
+    echo -e "${CYAN}📁 Found existing binaries for version ${NEW_VERSION} in ${DOWNLOAD_DIR}${NC}"
+    if ask_yes_no "Use existing binaries instead of downloading or compiling?" "y"; then
+      chmod +x "${DOWNLOAD_DIR}/fdctl" "${DOWNLOAD_DIR}/solana"
+
+      DOWNLOADED=true
+
+      echo -e "${GREEN}✅ Using existing Firedancer binaries!${NC}"
+      return
+    fi
+  fi
+
   # Check if pre-compiled binary is available
   AVAILABILITY_URL="https://api.vano.one/files/fdctl-${NEW_VERSION}"
   if [ "$USER_ID" -ne 1000 ]; then
