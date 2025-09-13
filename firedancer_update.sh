@@ -6,7 +6,7 @@ set -e
 # Initialize helper UI functions
 eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.7.0/helper.sh)"
 
-print_multiline_header "Solana Firedancer Updater v3.14.0" \
+print_multiline_header "Solana Firedancer Updater v3.15.0" \
     "This script will perform the following operations" \
     "Update installed firedancer to the latest version or to the specified version from an argument" \
     "Update toml configs and ensure auto-start for firedancer" \
@@ -249,7 +249,7 @@ configure_fd() {
   cat > /home/firedancer/solana_fd/solana-testnet.toml <<EOF
 name = "fd1"
 user = "firedancer"
-dynamic_port_range = "8004-8024"
+dynamic_port_range = "8004-8029"
 
 [log]
     path = "/home/firedancer/solana_fd/solana.log"
