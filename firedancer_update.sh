@@ -6,7 +6,7 @@ set -e
 # Initialize helper UI functions
 eval "$(curl -fsSL https://raw.githubusercontent.com/ivan-leschinsky/solana-configs/v3.7.0/helper.sh)"
 
-print_multiline_header "Solana Firedancer Updater v3.16.0" \
+print_multiline_header "Solana Firedancer Updater v3.17.0" \
     "This script will perform the following operations" \
     "Update installed firedancer to the latest version or to the specified version from an argument" \
     "Update toml configs and ensure auto-start for firedancer" \
@@ -185,12 +185,7 @@ update_fd() {
   # Check if binaries already exist in DOWNLOAD_DIR
   if [ -f "${DOWNLOAD_DIR}/fdctl" ] && [ -f "${DOWNLOAD_DIR}/solana" ]; then
     echo -e "${CYAN}📁 Found existing binaries for version ${NEW_VERSION} in ${DOWNLOAD_DIR}${NC}"
-    local use_existing="y"
-    if [ "$FAST_MODE" != true ]; then
-      use_existing=$(ask_yes_no "Use existing binaries instead of downloading or compiling?" "y")
-    fi
-
-    if [ "$use_existing" = "y" ]; then
+    if [ "$FAST_MODE" = true ] || ask_yes_no "Use existing binaries instead of downloading or compiling?" "y"; then
       chmod +x "${DOWNLOAD_DIR}/fdctl" "${DOWNLOAD_DIR}/solana"
 
       DOWNLOADED=true
@@ -208,12 +203,7 @@ update_fd() {
   AVAILABILITY_RESPONSE=$(curl -s "$AVAILABILITY_URL")
 
   if echo "$AVAILABILITY_RESPONSE" | jq -e '.available == true' > /dev/null 2>&1; then
-    local download_precompiled="y"
-    if [ "$FAST_MODE" != true ]; then
-      download_precompiled=$(ask_yes_no "Download pre-compiled binaries for firedancer ${NEW_VERSION} instead of compiling?" "y")
-    fi
-
-    if [ "$download_precompiled" = "y" ]; then
+    if [ "$FAST_MODE" = true ] || ask_yes_no "Download pre-compiled binaries for firedancer ${NEW_VERSION} instead of compiling?" "y"; then
       FDCTL_URL="https://solana-api.vano.one/fdctl-${NEW_VERSION}"
       SOLANA_URL="https://solana-api.vano.one/solana-${NEW_VERSION}"
       if [ "$USER_ID" -ne 1000 ]; then
