@@ -34,32 +34,79 @@ print_multiline_header() {
   shift
   local lines=("$@")
 
-  # Find the longest line length (including title)
-  local max_length=${#title}
+  # Get terminal width (default 80)
+  local terminal_width=$(tput cols 2>/dev/null || echo 80)
+
+  # Function to get actual display length of text (accounting for emoji visual width)
+  get_visual_length() {
+    local text="$1"
+    # Remove color codes for measurement
+    local clean_text=$(echo -e "$text" | sed 's/\x1b\[[0-9;]*m//g')
+
+    echo ${#clean_text}
+  }
+
+  # Find the longest line for consistent width
+  local max_width=0
+  local title_width=$(get_visual_length "$title")
+  if [ $title_width -gt $max_width ]; then
+    max_width=$title_width
+  fi
+
   for line in "${lines[@]}"; do
-    if [ ${#line} -gt $max_length ]; then
-      max_length=${#line}
+    if [ -n "$line" ]; then
+      local line_width=$(get_visual_length "$line")
+      if [ $line_width -gt $max_width ]; then
+        max_width=$line_width
+      fi
     fi
   done
 
-  # Add padding
-  local width=$(( max_length + 4 ))
-  local line=$(printf '═%.0s' $(seq 1 $width))
-  local empty_line=$(printf ' %.0s' $(seq 1 $width))
+  # Add padding and ensure minimum width
+  local content_width=$((max_width + 2))  # 4 extra chars for padding
+  if [ $content_width -lt 60 ]; then
+    content_width=60
+  fi
 
-  # Print title box
+  # Limit to terminal width
+  if [ $content_width -gt $((terminal_width - 4)) ]; then
+    content_width=$((terminal_width - 4))
+  fi
+
+  local total_width=$((content_width + 6))  # 6 = 2 borders + 4 spaces
+
+  # Create border lines
+  local border_line=$(printf '═%.0s' $(seq 1 $((total_width - 2))))
+  local space_line=$(printf ' %.0s' $(seq 1 $((total_width - 2))))
+
+  # Print header
   echo -e "${CYAN}"
-  echo "╔${line}╗"
-  printf "║  ${BOLD}%-${max_length}s${NC}${CYAN}  ║\n" "$title"
-  echo "╠${line}╣"
+  echo "╔${border_line}╗"
 
-  # Print content
+  # Print title - manually pad to avoid printf issues with emoji
+  local title_visual_len=$(get_visual_length "$title")
+  local title_padding=$((content_width - title_visual_len))
+  printf "║  ${BOLD}%s${NC}%*s  ║\n" "$title" $title_padding ""
+
+  echo "╠${border_line}╣"
+
+  # Print content lines
   for linetext in "${lines[@]}"; do
-    printf "║  %-${max_length}s  ║\n" "$linetext"
+    if [ -z "$linetext" ]; then
+      # Empty line - match the content width + padding
+      printf "║  %*s  ║\n" $content_width ""
+    else
+      # Content line - manually pad to avoid printf issues with emoji
+      local line_visual_len=$(get_visual_length "$linetext")
+      local line_padding=$((content_width - line_visual_len))
+      echo -n "║  ${linetext}"
+      printf "%*s" $line_padding ""
+      echo "  ║"
+    fi
   done
 
   # Print bottom border
-  echo "╚${line}╝"
+  echo "╚${border_line}╝"
   echo -e "${NC}"
 }
 
